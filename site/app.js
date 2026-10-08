@@ -3,15 +3,17 @@
 const {members,avatars,rooms={},catalog=[],n=0}=JSON.parse(document.getElementById('member-data').textContent);
 const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n};
 function line(container,label,value){if(value)container.append(el('p',label+'：'+value))}
-const avatarImg=m=>{const img=el('img',undefined,'avatar');img.src='../assets/avatars/'+String(m.avatar).padStart(2,'0')+'.svg';img.alt=avatars.find(a=>a.number===m.avatar)?.name||'自選形象';return img};
+const avatarImg=m=>{const img=el('img',undefined,'avatar');img.src='../assets/avatars/'+String(m.avatar).padStart(2,'0')+'.svg';img.alt=avatars.find(a=>a.number===m.avatar)?.description||'自選形象';return img};
+const safeDecode=s=>{try{return decodeURIComponent(s)}catch{return ''}};
 const byId=Object.fromEntries(members.map(m=>[m.id,m]));
-document.getElementById('count').textContent='目前入住 '+n+' 組（展示櫃、虛構範例與草稿不算）。';
+document.getElementById('count').textContent='目前入住 '+n+' 組（展示櫃、示範戶、虛構範例與草稿不算）。';
 for(const m of members){
 const card=el('article',undefined,'card '+(m.type==='company'?'company':''));
 const top=el('div',undefined,'top');top.append(avatarImg(m));
 const identity=el('div');identity.append(el('span',m.type==='company'?'公司＋AI':'個人＋AI','label'),el('h3',m.handle),el('span',m.github?'@'+m.github:'','label'));top.append(identity);card.append(top,el('p',m.intro,'intro'));
 
 if(m.showcase)card.append(el('div','展示櫃 · 不算進入住組數','status'));
+if(m.demo)card.append(el('div','示範戶 · 不代表真人 · 不算進入住組數','status'));
 if(m.example)card.append(el('div','虛構範例 · 用來示範報到','status'));
 const tabs=el('div',undefined,'tabs');tabs.setAttribute('role','tablist');tabs.setAttribute('aria-label',m.handle+' 的介紹');
 const profile=el('div',undefined,'panel');profile.id=m.id+'-profile';profile.setAttribute('role','tabpanel');
@@ -35,7 +37,7 @@ document.getElementById('cards').append(card);
 // 房間：固定 6 格，格子放自己的素材、互換來的素材，或空著。
 function showRoom(){
 const room=document.getElementById('room'),main=document.querySelector('main');
-const id=decodeURIComponent((location.hash.match(/^#room=(.+)$/)||[])[1]||''),m=byId[id],slots=rooms[id]?.slots;
+const id=safeDecode((location.hash.match(/^#room=(.+)$/)||[])[1]||''),m=byId[id],slots=rooms[id]?.slots;
 room.replaceChildren();
 if(!m||!slots){room.hidden=true;main.hidden=false;return}
 main.hidden=true;room.hidden=false;
@@ -76,7 +78,7 @@ function filterCards(){
  wantCount.textContent=q?'找到 '+shown+' 間':'';
 }
 want.addEventListener('input',filterCards);
-const preset=location.hash.match(/^#want=(.+)$/);if(preset){want.value=decodeURIComponent(preset[1]);filterCards()}
+const preset=location.hash.match(/^#want=(.+)$/);if(preset){want.value=safeDecode(preset[1]);filterCards()}
 
 let world=null,activityIndex=0;
 const reduced=matchMedia('(prefers-reduced-motion: reduce)');

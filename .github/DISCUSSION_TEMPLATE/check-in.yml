@@ -102,8 +102,7 @@ body:
     id: works
     attributes:
       label: "作品（最多 3 件，每件標題加一句話）（選填）"
-      description: "每行寫「1. 標題：一句話」，不要寫任何檔案路徑。"
-      description: "不要貼圖檔路徑。本機路徑會被擋。"
+      description: "每行寫「1. 標題：一句話」（用冒號分隔）。格式不符只退作品欄；不要寫任何檔案路徑，本機路徑會被擋。"
     validations:
       required: false
   - type: textarea

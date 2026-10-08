@@ -1,7 +1,7 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const {mkTmp}=require('./_tmp'),{build}=require('../scripts/intake'),{intakeEvent}=require('../scripts/intake_from_event'),{checkRepo,checkMember}=require('../scripts/check_members');
 const sample=fs.readFileSync(path.join(__dirname,'fixtures/demo-check-in.md'),'utf8').replace(/\r\n/g,'\n');
-const event=body=>({action:'created',sender:{login:'demo-resident'},discussion:{user:{login:'demo-resident'},category:{slug:'check-in'},body}});
+const event=body=>({action:'created',sender:{login:'demo-resident'},discussion:{user:{login:'demo-resident',id:101},category:{slug:'check-in'},body}});
 const read=(base,rel)=>JSON.parse(fs.readFileSync(path.join(base,rel)));
 test('demo needs authorizer; display handle accepts dot and 40 code points but refuses 41',()=>{
  assert.ok(build(sample.replace('### 由誰授權（選了示範戶才要填）\n隊長','### 由誰授權（選了示範戶才要填）\n_No response_'),'demo').errors.some(e=>e.includes('授權人')));

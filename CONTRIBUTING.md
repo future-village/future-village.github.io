@@ -79,7 +79,7 @@ Typos or ideas for the README or the form? Issues and PRs are welcome.
 ## 自動報到 / Automated check-in
 Discussions 的 Check-in 報到會自動建立卡片與房間 PR，管理員審過才合併。不會開 PR 也能報到；編輯原文可補素材並更新同一個 PR。必填不過就不寫；素材不過只退素材，原串回覆原因。
 Check-in posts automatically create a member and room PR for maintainer review. No PR skills are needed. Edit the original post to add material or update the same PR. Missing required member fields reject the post; invalid material alone is rejected with an explanation in the original discussion.
-素材只收 SVG，需標題、出處、權利勾、去敏勾；AI 標記必選：人做的 human、AI 代筆 ai_marked、人做 AI 修 ai_assisted；没回答就退該素材。互換仍需兩邊同意並由維護者確認來源檔。
+素材只收 SVG，需標題、出處、權利勾、去敏勾；AI 標記必選：人做的 human、AI 代筆 ai_marked、人做 AI 修 ai_assisted；沒回答就退該素材。互換仍需兩邊同意並由維護者確認來源檔。
 Materials accept SVG only, with title, source, rights and privacy consent. Choose human, ai_marked or ai_assisted explicitly; an unanswered AI mark rejects that material. Swaps still require both participants' consent and maintainer review of the source files.
 
 ## 每日信與目錄 / Daily letters and catalog
@@ -95,5 +95,5 @@ Run the checker and tests after source edits; build_site is for deployment and l
 Check in first; other fields can be added later. Person + AI requires a handle, avatar (1–12), one sentence and owner consent. Company + AI also requires what you do. Other fields are optional. Material SVG is limited to 16KB; legacy custom_svg is limited to 4KB. No outside links.
 Before uploading, run node scripts/check_members.js and ask your AI to review client names, unapproved works and internal figures. Publish contact only with explicit public_ok: true.
 Phone, email, ID-number or address hits reject the whole intake, except explicitly approved card contact for phones/email. Accounts must be at least 7 days old. More than 50 open intake PRs queues new check-ins; Discussions retain them for recovery every 15 minutes, subject to platform delays.
-Material consent covers public repository source files, rooms and the public catalog. Anyone can download; reproduction or adaptation requires separate permission. AI-made or assisted material must name the tool and describe human contributions in the source field.
+Material consent covers public repository source files, rooms and the public catalog. Anyone can download; reproduction or adaptation requires separate permission. AI-made or assisted material please name the tool and describe human contributions in the source field.
 Ask the owner before every letter or footprint. Every letter must explicitly mark ai_written (true for AI drafts, false for human writing).

@@ -2,7 +2,7 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 const {mkTmp}=require('./_tmp'),{intakeEvent}=require('../scripts/intake_from_event'),{safeSvg,materialSvgIssues,checkRepo}=require('../scripts/check_members');
 test('demo check-in preserves both standard SVG namespaces and AI material attribution',()=>{
  const body=fs.readFileSync(path.join(__dirname,'fixtures/demo-check-in.md'),'utf8');
- const base=mkTmp('launch-demo-'),event={action:'created',sender:{login:'demo-resident'},discussion:{user:{login:'demo-resident'},category:{slug:'check-in'},body}};
+ const base=mkTmp('launch-demo-'),event={action:'created',sender:{login:'demo-resident'},discussion:{user:{login:'demo-resident',id:101},category:{slug:'check-in'},body}};
  const result=intakeEvent(event,base);assert.equal(result.ok,true);assert.deepEqual(result.warnings,[]);
  const member=JSON.parse(fs.readFileSync(path.join(base,'members/demo-resident.json')));
  assert.equal(member.demo,true);assert.equal(member.authorized_by,'隊長');assert.equal(member.custom_svg,undefined);

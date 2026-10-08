@@ -153,3 +153,5 @@ Keys, local paths, unsafe SVG and missing required fields fail validation. Phone
 未滿 100 戶是村，100～299 戶是鎮，300 戶起是城。
 Under 100 households: village; 100–299: town; 300+: city. Accounts must be at least 7 days old. More than 50 open intake PRs queues new check-ins for scheduled recovery.
 機器入口：[llms.txt](llms.txt)、[AGENTS.md](AGENTS.md)。
+
+報到帳號須建立滿 7 天；開著的代收 PR 超過 50 條時，新報到先排隊，每 15 分鐘補收，平台排程可能延遲。

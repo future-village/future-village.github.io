@@ -1,50 +1,62 @@
 [
   {
     "number": 1,
-    "name": "晨光小芽"
+    "name": "晨光小芽",
+    "description": "金色葉形"
   },
   {
     "number": 2,
-    "name": "月亮旅人"
+    "name": "月亮旅人",
+    "description": "月白月形"
   },
   {
     "number": 3,
-    "name": "橘子電波"
+    "name": "橘子電波",
+    "description": "橘色圓角方塊"
   },
   {
     "number": 4,
-    "name": "藍色小島"
+    "name": "藍色小島",
+    "description": "藍色葉形"
   },
   {
     "number": 5,
-    "name": "薄荷雲朵"
+    "name": "薄荷雲朵",
+    "description": "薄荷色月形"
   },
   {
     "number": 6,
-    "name": "紫色星星"
+    "name": "紫色星星",
+    "description": "紫色圓角方塊"
   },
   {
     "number": 7,
-    "name": "珊瑚風車"
+    "name": "珊瑚風車",
+    "description": "珊瑚色葉形"
   },
   {
     "number": 8,
-    "name": "湖邊石頭"
+    "name": "湖邊石頭",
+    "description": "湖藍色月形"
   },
   {
     "number": 9,
-    "name": "金色紙船"
+    "name": "金色紙船",
+    "description": "金色圓角方塊"
   },
   {
     "number": 10,
-    "name": "莓果信封"
+    "name": "莓果信封",
+    "description": "莓紅色葉形"
   },
   {
     "number": 11,
-    "name": "青色積木"
+    "name": "青色積木",
+    "description": "青色月形"
   },
   {
     "number": 12,
-    "name": "夜空火花"
+    "name": "夜空火花",
+    "description": "夜藍色圓角方塊"
   }
 ]

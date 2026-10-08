@@ -52,7 +52,7 @@ function parsePost(text) {
 function build(post, slug) {
  if(typeof post!=='string'||post.length>20000)return {files:{},errors:['內文過長（上限 20000 字元）'],materialErrors:{}};
  const {fields: f, checks} = parsePost(post);
- const errors = [];
+ const errors = [], warnings = [];
  if (!SLUG.test(slug || '')) errors.push('--slug 須為小寫英數與連字號');
  const demo = /示範戶/.test(f.kind || '');
  const type = !demo && /公司/.test(f.kind || '') ? 'company' : 'person';
@@ -73,10 +73,10 @@ function build(post, slug) {
  if(f.works){
   const entries=f.works.split(/(?:\r?\n|[ \t]+)(?=\d+\.[ \t])/).map(s=>s.replace(/^\d+\.[ \t]*/, '').trim()).filter(Boolean);
   const works=entries.map(s=>{const split=s.search(/[：:]/);return {title:split<0?s:s.slice(0,split).trim(),description:split<0?'':s.slice(split+1).trim()};});
-  if(works.length>3||works.some(w=>!w.title||!w.description))errors.push('作品最多 3 件，每件格式為「標題：一句話」');
+  if(works.length>3||works.some(w=>!w.title||!w.description))warnings.push('作品欄未收：最多 3 件，每件格式為「標題：一句話」');
   else if(type==='company')member.company.works=works;else member.works=works;
  }
- if (f.card) {try {const card=JSON.parse(f.card);if(!card||typeof card!=='object'||Array.isArray(card)||Object.keys(card).some(k=>!['contact','public_ok'].includes(k))||typeof card.contact!=='string'||typeof card.public_ok!=='boolean')throw new Error();member.card=card;}catch {errors.push('名片須為 contact 與 public_ok 的 JSON');}}
+ if (f.card) {try {const card=JSON.parse(f.card);if(!card||typeof card!=='object'||Array.isArray(card)||Object.keys(card).some(k=>!['contact','public_ok'].includes(k))||typeof card.contact!=='string'||typeof card.public_ok!=='boolean')throw new Error();if(card.public_ok!==true)delete card.contact;else if(/https?:\/\/|\bwww\./i.test(card.contact))errors.push('不收外部連結：card.contact');member.card=card;}catch {errors.push('名片須為 contact 與 public_ok 的 JSON');}}
  if (demo) {member.demo=true;member.authorized_by=f.authorized_by;}
  const files = {['members/' + slug + '.json']: member};
  const slots = Array.from({length: SLOTS}, () => ({type: 'empty'}));
@@ -96,7 +96,7 @@ function build(post, slug) {
   slots[slots.findIndex(s=>s.type==='empty')]={type:'own',material:slug+'/'+id};
  }
  files['rooms/' + slug + '/room.json'] = {owner: slug, slots, ...(f.missing ? {missing: f.missing} : {})};
- return {files, errors, materialErrors};
+ return {files, errors, materialErrors, warnings};
 }
 function writeFiles(base, files) {
  for (const [rel, content] of Object.entries(files)) {
@@ -105,7 +105,7 @@ function writeFiles(base, files) {
  }
 }
 function intake(post, slug, base = root, {dryRun = false} = {}) {
- const {files, errors, materialErrors} = build(post, slug);
+ const {files, errors, materialErrors, warnings=[]} = build(post, slug);
  errors.push(...Object.values(materialErrors).flat());
  if (fs.existsSync(path.join(base, 'members', slug + '.json'))) errors.push('members/' + slug + '.json 已存在，不覆蓋');
  if (errors.length) return {ok: false, errors, files: Object.keys(files)};
@@ -119,7 +119,7 @@ function intake(post, slug, base = root, {dryRun = false} = {}) {
    if (failed.length) return {ok: false, errors: failed.map(i => i.file + '｜' + i.field + '｜' + i.kind), files: Object.keys(files)};
  } finally { /* Retain the validation fixture for inspection; no deletion. */ }
  if (!dryRun) writeFiles(base, files);
- return {ok: true, errors: [], files: Object.keys(files)};
+ return {ok: true, errors: [], warnings, files: Object.keys(files)};
 }
 if (require.main === module) {
  const args = process.argv.slice(2), opt = name => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : undefined; };
@@ -127,7 +127,8 @@ if (require.main === module) {
  if (!file || !opt('--slug')) { console.error('用法：node scripts/intake.js <報到.md> --slug <小寫代號> [--root <repo>] [--dry-run]'); process.exit(2); }
  const result = intake(fs.readFileSync(file, 'utf8'), opt('--slug'), opt('--root') ? path.resolve(opt('--root')) : root, {dryRun: args.includes('--dry-run')});
  for (const e of result.errors) console.log('失敗｜' + e);
+ for (const warning of result.warnings||[]) console.log('提醒｜' + warning);
  if (result.ok) console.log((args.includes('--dry-run') ? '可以收：' : '已寫入：') + result.files.join('、') + '。接著跑 node scripts/build_site.js 與 node scripts/check_members.js。');
  process.exitCode = result.ok ? 0 : 1;
 }
-module.exports = {parsePost, build, intake};
+module.exports = {parsePost, build, intake, EXTERNAL};

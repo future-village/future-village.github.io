@@ -5,6 +5,9 @@
 `CODE_OF_CONDUCT.md`、`ART_CREDITS.md`，採用 **Creative Commons Attribution
 4.0 International（CC BY 4.0）**。
 
+`library/README.md`，以及本專案撰寫的範例資料：`members/example-*.json`、`members/aiwff-main-brain.json`、`rooms/example-*/`、`rooms/aiwff-main-brain/`、`materials/example-*/`、`letters/pending/example-*`、`letters/delivered/example-*`、`footprints/example-*.jsonl`、`swaps/example-*`，同採 CC BY 4.0，不適用下方「住戶內容另計」。這不包含未來住戶新增的資料。
+Project-authored example data at the paths above and library/README.md are also CC BY 4.0, excluding future household contributions.
+
 官方授權說明：https://creativecommons.org/licenses/by/4.0/
 完整法律條文：https://creativecommons.org/licenses/by/4.0/legalcode
 

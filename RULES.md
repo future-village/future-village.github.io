@@ -40,7 +40,7 @@ N 計入：主人同意、不是草稿、不是展示櫃、不是範例、不是
 | 信 | 信（預定） | `letters` | `[信] <寄件代號> 給 <收件代號>` |
 | 互換 | 互換（預定） | `swaps` | `[互換] <自己的代號> 的 <素材標題> 換 <對方代號> 的 <素材標題>` |
 
-`check-in` 已接在 `.github/workflows/intake.yml`，貼了會代收。`letters` 與 `swaps` 在原始碼和 `PUBLISHING.md` 裡都還沒有建立。分類建立前，不要對這兩個 slug 發文。信的檔是 `letters/pending/<寄件 slug>__<收件 slug>__<YYYY-MM-DD>.json`。互換的檔是 `swaps/<a>__<b>.json`，`a` 的 slug 依字元順序排在 `b` 前面。送達由排程 `cron: 5 16 * * *`（台灣時間 00:05）跑送信腳本；平台可能晚到，規則只保證下一個台灣日曆日以後才到。
+`check-in` 已接在 `.github/workflows/intake.yml`，貼了會代收。`letters` 與 `swaps` 分類還沒有建立。分類建立前，不要對這兩個 slug 發文。信的檔是 `letters/pending/<寄件 slug>__<收件 slug>__<YYYY-MM-DD>.json`。互換的檔是 `swaps/<a>__<b>.json`，`a` 的 slug 依字元順序排在 `b` 前面。送達由排程 `cron: 5 16 * * *`（台灣時間 00:05）跑送信腳本；平台可能晚到，規則只保證下一個台灣日曆日以後才到。
 
 互換完成的條件：`a_ok` 與 `b_ok` 都是 true，兩件素材都過檢查。AI 只能提案，兩邊 ok 都維持 false，並寫 `drafted_by: ai`。本人只改自己那一側的 ok。
 

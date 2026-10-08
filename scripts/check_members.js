@@ -53,6 +53,7 @@ function checkMember(m, file = 'member') {
    else add('owner_consent','缺少主人同意');
  }
  if (m.github !== undefined && !/^[a-z0-9_-]{1,60}$/i.test(m.github)) add('github','須為 GitHub 帳號');
+ if(m.github_id!==undefined&&(!Number.isSafeInteger(m.github_id)||m.github_id<=0))add('github_id','須為正整數 GitHub 帳號 ID');
  if (m.showcase !== undefined && typeof m.showcase !== 'boolean') add('showcase','須為 true 或 false');
  if (m.gates_pass !== undefined && !(Array.isArray(m.gates_pass) && m.gates_pass.every(g => Number.isInteger(g) && g >= 1 && g <= 8) && new Set(m.gates_pass).size === m.gates_pass.length))
    add('gates_pass','須為 1～8 不重複的關號；只記錄、不加格');
@@ -74,6 +75,7 @@ function checkMember(m, file = 'member') {
      const approved = field === 'company.card' || field === 'card';
      for (const [k,v] of Object.entries(value)) visit(v,field ? field+'.'+k : k, approved && value.public_ok === true && k === 'contact');
    } else if (typeof value === 'string') {
+     if(['card.contact','company.card.contact'].includes(field)&&EXTERNAL_LINK.test(value))add(field,'不收外部連結');
      for (const [kind,re,fatal] of patterns) if (re.test(value)) {
        if (consent && ['台灣手機','台灣市話','Email'].includes(kind)) add(field,kind+'：本人同意公開',false,'已標 public_ok: true；仍請確認公開範圍');
        else add(field,kind,Boolean(fatal));
@@ -155,7 +157,7 @@ function checkRepo(base = root, {today = taipeiToday()} = {}) {
      for (const key of ['title','source']) if (!(typeof meta[key] === 'string' && meta[key].trim())) madd(key, key === 'source' ? '缺少出處' : '缺少標題');
      if (meta.rights_ok !== true) madd('rights_ok','缺少本人的權利勾');
      if (meta.desensitized_ok !== true) madd('desensitized_ok','缺少去敏勾');
-     if (!['human','ai_marked','ai_assisted'].includes(meta.made_by)) madd('made_by','須為 human 或 ai_marked');
+     if (!['human','ai_marked','ai_assisted'].includes(meta.made_by)) madd('made_by','須為 human、ai_marked 或 ai_assisted');
      forbiddenKeys(meta,'',madd); scanText(meta,'',madd);
      materials.set(slug+'/'+id, {...meta, owner: slug, id});
    }
@@ -179,7 +181,7 @@ function checkRepo(base = root, {today = taipeiToday()} = {}) {
      if (typeof s[side+'_material'] !== 'string' || !s[side+'_material'].startsWith(s[side]+'/')) add(side+'_material','須是 '+side+' 自己目錄裡的素材');
      else if (!goodMaterial(s[side+'_material'])) add(side+'_material','素材不存在或沒過檢查（出處、權利勾、去敏勾、SVG）');
    }
-   if (s.a_ok !== true || s.b_ok !== true) add('a_ok/b_ok','只有一邊同意：這筆還是「已提出」，兩邊都勾了才合併',true,'等對方在自己的 PR 勾 *_ok');
+   if (s.a_ok !== true || s.b_ok !== true) add('a_ok/b_ok','只有一邊同意：這筆還是「已提出」，兩邊都勾了才合併',true,'等雙方本人在同一個 PR 只改自己那一側的 *_ok');
    swaps.set(s.a+'__'+s.b, s);
  }
  const completeSwap = key => swaps.has(key) && !issues.some(i => i.fatal && i.file === 'swaps/'+key+'.json');

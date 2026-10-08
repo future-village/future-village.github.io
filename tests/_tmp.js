@@ -11,6 +11,6 @@ function safeRm(root,rel){
  const target=path.resolve(realRoot,rel);if(!inside(realRoot,target))throw new Error('Escaping target');noLinks(target);
  if(!inside(realRoot,fs.realpathSync(target)))throw new Error('Escaping real target');
  function walk(file){if(fs.lstatSync(file).isSymbolicLink())throw new Error('Link refused');if(fs.lstatSync(file).isDirectory())for(const name of fs.readdirSync(file))walk(path.join(file,name));}walk(target);
- const trashBase=path.join(base,'future-village-quarantine');fs.mkdirSync(trashBase,{recursive:true});noLinks(trashBase);const trash=path.join(trashBase,require('node:crypto').randomUUID());if(fs.existsSync(trash))throw new Error('Destination exists');fs.renameSync(target,trash);
+ const trashBase=process.env.FV_TEST_QUARANTINE?path.resolve(process.env.FV_TEST_QUARANTINE):path.join(base,'future-village-quarantine');for(let ancestor=trashBase;;ancestor=path.dirname(ancestor)){if(fs.existsSync(ancestor))noLinks(ancestor);if(path.dirname(ancestor)===ancestor)break;}fs.mkdirSync(trashBase,{recursive:true});noLinks(trashBase);const trash=path.join(trashBase,require('node:crypto').randomUUID());if(fs.existsSync(trash))throw new Error('Destination exists');fs.renameSync(target,trash);
 }
 module.exports={mkTmp,safeRm};

@@ -15,6 +15,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   intake:
+    timeout-minutes: 15
     if: github.event_name != 'discussion' || github.event.discussion.category.slug == 'check-in'
     runs-on: ubuntu-latest
     env:

@@ -7,7 +7,7 @@ const {exportPublic,scan}=require('../scripts/export_public');
 const root=path.resolve(__dirname,'..'),good=fs.readFileSync(path.join(__dirname,'fixtures/intake/good-form.md'),'utf8');
 const tmp=()=>mkTmp('open-door-test-');
 function copy(){const dir=tmp();require('./_fixture').seed(dir);for(const rel of require('./_fixture').publicTracked(root,git(root,'ls-files','-z').split('\0').filter(Boolean)).filter(rel=>! /^(members|rooms|materials|swaps|letters|footprints)\//.test(rel))){const dest=path.join(dir,rel);fs.mkdirSync(path.dirname(dest),{recursive:true});fs.copyFileSync(path.join(root,rel),dest);}return dir;}
-const event=(body=good,login='River')=>({action:'created',sender:{login},discussion:{user:{login},category:{slug:'check-in'},body}});
+const event=(body=good,login='River')=>({action:'created',sender:{login},discussion:{user:{login,id:101},category:{slug:'check-in'},body}});
 const read=(dir,rel)=>JSON.parse(fs.readFileSync(path.join(dir,rel),'utf8'));
 function git(dir,...args){const r=cp.spawnSync('git',['-C',dir,...args],{encoding:'utf8'});assert.equal(r.status,0,r.stderr);return r.stdout.trim();}
 test('event normal check-in preserves explicit human marking',()=>{const dir=copy(),r=intakeEvent(event(),dir);assert.equal(r.ok,true);assert.deepEqual(r.warnings,[]);assert.equal(read(dir,'members/river.json').github,'river');assert.equal(read(dir,'materials/river/item-1.json').made_by,'human');});
