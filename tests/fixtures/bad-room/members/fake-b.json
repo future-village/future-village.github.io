@@ -1,0 +1,9 @@
+{
+  "id": "fake-b",
+  "type": "person",
+  "handle": "範例｜故意壞的乙",
+  "avatar": 4,
+  "intro": "虛構：故意壞的資料",
+  "owner_consent": true,
+  "example": true
+}

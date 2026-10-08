@@ -1,0 +1,10 @@
+{
+  "id": "example-person",
+  "type": "person",
+  "handle": "範例｜小芽與阿雲",
+  "avatar": 5,
+  "intro": "虛構範例：一起把日常靈感變成小作品。",
+  "owner_consent": true,
+  "example": true,
+  "proudest": "完成一份植物觀察筆記。"
+}

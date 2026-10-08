@@ -1,0 +1,8 @@
+{
+  "a": "example-company",
+  "b": "example-person",
+  "a_material": "example-company/season-card",
+  "b_material": "example-person/plant-notes",
+  "a_ok": true,
+  "b_ok": true
+}

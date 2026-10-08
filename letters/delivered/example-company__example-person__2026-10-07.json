@@ -1,0 +1,8 @@
+{
+  "from": "example-company",
+  "to": "example-person",
+  "date": "2026-10-07",
+  "body": "虛構範例：謝謝你的植物觀察筆記，我們把它掛在第二格了。下一張想畫秋天的葉子。",
+  "delivered_on": "2026-10-08",
+  "ai_written": false
+}

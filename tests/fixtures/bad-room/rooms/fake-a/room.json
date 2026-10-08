@@ -1,0 +1,25 @@
+{
+  "owner": "fake-a",
+  "slots": [
+    {
+      "type": "swap",
+      "swap": "fake-a__fake-b",
+      "material": "fake-b/ok"
+    },
+    {
+      "type": "empty"
+    },
+    {
+      "type": "empty"
+    },
+    {
+      "type": "empty"
+    },
+    {
+      "type": "empty"
+    },
+    {
+      "type": "empty"
+    }
+  ]
+}

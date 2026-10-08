@@ -1,0 +1,28 @@
+{
+  "owner": "example-person",
+  "slots": [
+    {
+      "type": "own",
+      "material": "example-person/plant-notes"
+    },
+    {
+      "type": "own",
+      "material": "example-person/morning-sketch"
+    },
+    {
+      "type": "swap",
+      "swap": "example-company__example-person",
+      "material": "example-company/season-card"
+    },
+    {
+      "type": "empty"
+    },
+    {
+      "type": "empty"
+    },
+    {
+      "type": "empty"
+    }
+  ],
+  "missing": "想掛一件別人畫的地圖或路線圖"
+}

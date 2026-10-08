@@ -1,0 +1,5 @@
+export function position(h){const p=h.plot||{},coordinate=v=>Number(BigInt(v||0)%4294967296n)/4294967296;return {x:coordinate(p.x)*120-60,z:coordinate(p.z)*90-45};}
+export function roadsidePlots(n){return Array.from({length:n},(_,i)=>({x:(i%2?-1:1)*22,z:42-Math.floor(i/2)*27}));}
+export function model(data){if(!data?.village||!Array.isArray(data.households)||!Array.isArray(data.events))throw Error('村莊資料格式不完整');return {...data,households:data.households.map((h,i)=>({...h,position:roadsidePlots(data.households.length+6)[i]}))};}
+export function newEvents(events,seen,initial=false){const fresh=events.filter(e=>typeof e.id==='string'&&!seen.has(e.id));for(const e of events)seen.add(e.id);return initial?[]:fresh;}
+export function route(e,homes){const post={x:0,z:57},market={x:-40,z:57},a=homes.get(e.from)||post,b=homes.get(e.to)||post;return e.type==='letter_sent'?[a,{x:a.x,z:57},post]:e.type==='letter_delivered'?[post,{x:b.x,z:57},b]:e.type==='swap'?[a,{x:a.x,z:57},market,{x:b.x,z:57},b]:[b,b];}

@@ -1,0 +1,9 @@
+{
+  "id": "fake-a",
+  "type": "person",
+  "handle": "範例｜故意壞的甲",
+  "avatar": 3,
+  "intro": "虛構：加我 https://line.me/ti/p/FAKE_TEST_ONLY",
+  "owner_consent": true,
+  "example": true
+}

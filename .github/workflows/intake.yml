@@ -1,0 +1,31 @@
+name: Intake
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+  discussion:
+    types: [created, edited]
+permissions:
+  contents: write
+  pull-requests: write
+  discussions: write
+# Event runs may be coalesced by GitHub; the scheduled scan recovers all posts.
+concurrency:
+  group: intake-global
+  cancel-in-progress: false
+jobs:
+  intake:
+    if: github.event_name != 'discussion' || github.event.discussion.category.slug == 'check-in'
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Recover all unprocessed check-ins
+        run: node scripts/intake_sweep.js

@@ -1,0 +1,32 @@
+const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),cp=require('node:child_process');
+const {mkTmp}=require('./_tmp');
+const {buildWorld,village,plot}=require('../scripts/build_world');
+test('level boundaries and bounded progress',()=>{for(const [n,level,next] of [[0,'village',100],[99,'village',100],[100,'town',300],[299,'town',300],[300,'city',null]]){const v=village(n);assert.equal(v.level,level);assert.equal(v.next_level_at,next);assert.ok(v.progress>=0&&v.progress<=1);}});
+test('plot stable, independent of input order and distinct',()=>{const ids=Array.from({length:1000},(_,i)=>'house-'+i);assert.equal(new Set(ids.map(id=>JSON.stringify(plot(id)))).size,ids.length);for(const id of ids.reverse())assert.deepEqual(plot(id),plot(id));});
+test('git fixture events, dates, visibility, counters and output',()=>{
+ const root=mkTmp('world-');
+ require('./_fixture').seed(root);
+ const write=(rel,value)=>{fs.mkdirSync(path.dirname(path.join(root,rel)),{recursive:true});fs.writeFileSync(path.join(root,rel),typeof value==='string'?value:JSON.stringify(value));};
+ const git=(...argv)=>{const r=cp.spawnSync('git',['-C',root,...argv],{encoding:'utf8',env:{...process.env,GIT_AUTHOR_DATE:'2026-10-06T12:00:00+08:00',GIT_COMMITTER_DATE:'2026-10-06T12:00:00+08:00'}});assert.equal(r.status,0,r.stderr);return r.stdout.trim();};
+ git('init');const commit=(files=['.'])=>{git('add',...files);git('-c','user.name=Fixture','-c','user.email=283511868+zaxardery8011-design@users.noreply.github.com','commit','-m','Fixture');};commit(['members','rooms','materials']);commit(['swaps']);commit(['letters']);commit(['footprints']);
+ write('library/book.json',{title:'測試書',summary:'一句話',source_url:'https://example.org/book',tags:[],added_by:'example-person',made_by:'human',license:'CC BY 4.0',do_not_execute:true});commit(['library']);
+ const world=buildWorld(root,path.join(root,'output.json'),{now:new Date('2026-10-08T10:00:00Z')});
+ assert.deepEqual(new Set(world.events.map(e=>e.type)),new Set(['move_in','swap','letter_sent','letter_delivered','visit','book_added']));
+ for(let i=1;i<world.events.length;i++)assert.ok(Date.parse(world.events[i-1].ts)>=Date.parse(world.events[i].ts));
+ assert.equal(world.households.find(h=>h.id==='example-person').moved_in_at,'2026-10-06T12:00:00+08:00');
+ assert.ok(world.events.filter(e=>['move_in','swap','visit','book_added'].includes(e.type)).every(e=>Date.parse(e.ts)===Date.parse('2026-10-06T12:00:00+08:00')));
+ const again=buildWorld(root,path.join(root,'again.json'),{now:new Date('2026-10-09T10:00:00Z')});assert.deepEqual(world.events.map(e=>e.id),again.events.map(e=>e.id));
+ const swapFile='swaps/example-company__example-person.json',swap=JSON.parse(fs.readFileSync(path.join(root,swapFile)));swap.completed_on='2026-10-08';write(swapFile,swap);
+ const dated=buildWorld(root,path.join(root,'dated.json'),{now:new Date('2026-10-08T10:00:00Z')});assert.equal(dated.kpi.swaps_today,1);assert.equal(dated.events.find(e=>e.type==='swap').day,'2026-10-08');assert.ok(!require('../scripts/check_members').checkRepo(root).issues.some(i=>i.fatal));
+ swap.completed_on='2026-02-30';write(swapFile,swap);assert.ok(require('../scripts/check_members').checkRepo(root).issues.some(i=>i.field==='completed_on'&&i.fatal));delete swap.completed_on;write(swapFile,swap);
+ assert.equal(world.village.shown,3);for(const e of world.events){assert.match(e.id,/^[a-f0-9]{64}$/);assert.equal(e.from,e.actors[0]||null);assert.equal(e.to,e.actors[1]||e.actors[0]||null);assert.equal(e.day,require('../scripts/check_members').taipeiToday(new Date(e.ts)));assert.ok(!('body' in e));}
+ assert.equal(world.kpi.books,1);assert.equal(world.village.households,0);assert.equal(world.kpi.swaps_total,1);
+ assert.ok(world.events.filter(e=>e.type.startsWith('letter')).every(e=>e.ts.endsWith('T00:00:00+08:00')));
+ write('footprints/example-person.jsonl',Array(60).fill(JSON.stringify({room:'example-company',date:'2026-10-06',note:'測試拜訪'})).join('\n')+'\n');commit(['footprints']);
+ const busy=buildWorld(root,path.join(root,'busy.json'),{now:new Date('2026-10-06T10:00:00Z')});assert.equal(busy.events.length,50);assert.equal(busy.kpi.visits_today,61);
+ const member=JSON.parse(fs.readFileSync(path.join(root,'members/example-person.json')));member.owner_consent=false;write('members/example-person.json',member);
+ const hidden=buildWorld(root,path.join(root,'hidden.json'));
+ assert.ok(!JSON.stringify(hidden).includes('example-person'));assert.ok(!JSON.stringify(hidden).includes(member.handle));
+ assert.ok(JSON.stringify(hidden).includes('aiwff-main-brain'));
+ assert.equal(hidden.kpi.swaps_total,0);assert.equal(hidden.kpi.letters_in_transit,0);assert.equal(hidden.kpi.books,1);
+});

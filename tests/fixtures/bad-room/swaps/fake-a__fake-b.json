@@ -1,0 +1,8 @@
+{
+  "a": "fake-a",
+  "b": "fake-b",
+  "a_material": "fake-a/bad",
+  "b_material": "fake-b/ok",
+  "a_ok": true,
+  "b_ok": false
+}

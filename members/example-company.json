@@ -1,0 +1,23 @@
+{
+  "id": "example-company",
+  "type": "company",
+  "handle": "範例｜紙船工作室",
+  "avatar": 9,
+  "intro": "虛構範例：一人與 AI 一起設計清楚的小工具。",
+  "owner_consent": true,
+  "example": true,
+  "company": {
+    "what": "把複雜資訊整理成容易理解的圖卡。",
+    "works": [
+      {
+        "title": "四季筆記",
+        "description": "虛構作品：用簡單圖卡記錄季節。"
+      }
+    ],
+    "looking_for": "喜歡文字與插畫的合作夥伴",
+    "card": {
+      "public_ok": false,
+      "contact": ""
+    }
+  }
+}

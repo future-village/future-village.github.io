@@ -1,0 +1,36 @@
+name: Letters
+on:
+  schedule:
+    - cron: '5 16 * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+concurrency:
+  group: letters
+  cancel-in-progress: false
+jobs:
+  deliver:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: main
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - run: node scripts/deliver_letters.js
+      - run: node scripts/check_members.js
+      - name: Commit delivery
+        run: |
+          git add letters
+          if ! git diff --cached --quiet; then
+            git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m 'Deliver daily letters'
+            git push origin HEAD:main
+          fi
+  pages:
+    needs: deliver
+    uses: ./.github/workflows/pages.yml
