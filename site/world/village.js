@@ -1,19 +1,23 @@
 import * as T from './assets/vendor/js/three/three.module.min.js';
 import {model,newEvents,route,roadsidePlots} from './data.mjs';
 import {worldPaths} from './paths.mjs';
+import {buildGround,eveningSky} from './ground.mjs';
 const paths=worldPaths(import.meta.url);
 document.querySelector('header a').href=paths.street;
 const $=id=>document.getElementById(id),low=new URLSearchParams(location.search).has('lowfx'),mobile=innerWidth<600;
 let renderer;try{renderer=new T.WebGLRenderer({antialias:!low});}catch{location.replace(paths.street);throw Error('WebGL unavailable');}
-renderer.setPixelRatio(low?1:Math.min(devicePixelRatio,1.5));renderer.setSize(innerWidth,innerHeight);$('stage').append(renderer.domElement);
-const scene=new T.Scene();scene.background=new T.Color('#292942');scene.fog=new T.Fog('#292942',170,370);
-const camera=new T.PerspectiveCamera(mobile?65:42,innerWidth/innerHeight,.1,600);scene.add(new T.HemisphereLight(0xffffff,0x29233e,2.5));const sun=new T.DirectionalLight(0xffce8c,2);sun.position.set(40,80,40);scene.add(sun);
+renderer.shadowMap.enabled=!low;renderer.shadowMap.type=T.PCFSoftShadowMap;
+renderer.setPixelRatio(low?1:Math.min(devicePixelRatio,mobile?1.25:1.5));renderer.setSize(innerWidth,innerHeight);$('stage').append(renderer.domElement);
+const scene=new T.Scene();scene.background=eveningSky();scene.fog=new T.Fog('#d4b4ac',280,550);
+const camera=new T.PerspectiveCamera(mobile?65:42,innerWidth/innerHeight,.1,600);
+scene.add(new T.HemisphereLight(0xffe4bd,0x677461,2));
+const sun=new T.DirectionalLight(0xffc28a,2.2);sun.position.set(-65,95,50);sun.castShadow=!low;
+sun.shadow.mapSize.set(mobile?512:1024,mobile?512:1024);Object.assign(sun.shadow.camera,{left:-115,right:115,top:115,bottom:-115,near:1,far:260});sun.shadow.normalBias=.08;sun.shadow.bias=-.0002;sun.shadow.radius=3;scene.add(sun);
+buildGround(scene);
 const box=new T.BoxGeometry(1,1,1),cone=new T.ConeGeometry(1,1,4),sphere=new T.SphereGeometry(1,8,6),colors=new Map();
 function mat(color){if(!colors.has(color))colors.set(color,new T.MeshLambertMaterial({color}));return colors.get(color);}
-function mesh(geo,color,x,y,z,sx=1,sy=1,sz=1){const m=new T.Mesh(geo,mat(color));m.position.set(x,y,z);m.scale.set(sx,sy,sz);scene.add(m);return m;}
-mesh(box,0x222139,0,-1,0,165,1,150);mesh(box,0x35324e,0,0,0,148,.2,128);mesh(box,0x3e3852,0,.2,0,130,.2,110);
-for(const [x,z,sx,sz] of [[0,-58,145,5],[0,58,145,5],[-70,0,5,120],[70,0,5,120],[0,0,4,114]])mesh(box,0x51445d,x,.4,z,sx,.2,sz);
-const labels=[],homeMeshes=new Map(),homes=new Map();let world,seen=new Set(),started=false,lastInput=performance.now(),yaw=.7,distance=mobile?165:140,target=new T.Vector3(0,0,30),drag=null,tour=0;
+function mesh(geo,color,x,y,z,sx=1,sy=1,sz=1){const m=new T.Mesh(geo,mat(color));m.position.set(x,y,z);m.scale.set(sx,sy,sz);m.castShadow=m.receiveShadow=true;scene.add(m);return m;}
+const labels=[],homeMeshes=new Map(),homes=new Map();let world,seen=new Set(),started=false,lastInput=performance.now(),yaw=.7,distance=mobile?245:215,target=new T.Vector3(0,0,30),drag=null,tour=0;
 function label(text,x,y,z,house){const el=document.createElement('div');el.className='label'+(house?' house':'');el.textContent=text;document.body.append(el);labels.push({el,p:new T.Vector3(x,y,z),house});return el;}
 const textures=new Map(),spriteMaterials=new Map(),loader=new T.TextureLoader();
 function spriteMaterial(name){if(!spriteMaterials.has(name)){const texture=loader.load(paths.art(name));texture.colorSpace=T.SRGBColorSpace;textures.set(name,texture);spriteMaterials.set(name,new T.SpriteMaterial({map:texture,transparent:true,alphaTest:.04,depthWrite:false}));}return spriteMaterials.get(name);}
@@ -25,7 +29,7 @@ function houseVariant(id){let hash=2166136261;for(const c of id)hash=Math.imul(h
 const houseSprites=Array.from({length:512},()=>{const m=sprite('house_1',0,0,0,28);m.visible=false;return m;});
 label('住宅區',0,2,15);const bookLabel=label('還沒有書',40,4,57);
 const emptyPlots=[];
-function syncEmptyPlots(count){for(const p of emptyPlots){scene.remove(p.mesh,p.post,p.sign);p.label.el.remove();labels.splice(labels.indexOf(p.label),1);}emptyPlots.length=0;for(const p of roadsidePlots(count+6).slice(count)){const pad=mesh(box,0x52445c,p.x,.5,p.z,18,.15,16),post=mesh(box,0x795438,p.x,2,p.z,1,4,1),sign=mesh(box,0xae855a,p.x,4,p.z,7,2,.5);label("還沒人住",p.x,5,p.z);emptyPlots.push({mesh:pad,post,sign,label:labels.at(-1)});}}
+function syncEmptyPlots(count){for(const p of emptyPlots){scene.remove(p.mesh,p.post,p.sign);p.label.el.remove();labels.splice(labels.indexOf(p.label),1);}emptyPlots.length=0;for(const p of roadsidePlots(count+6).slice(count)){const pad=mesh(box,0x8c9b70,p.x,.5,p.z,18,.15,16),post=mesh(box,0x795438,p.x,2,p.z,1,4,1),sign=mesh(box,0xae855a,p.x,4,p.z,7,2,.5);label("還沒人住",p.x,5,p.z);emptyPlots.push({mesh:pad,post,sign,label:labels.at(-1)});}}
 for(let i=0;i<24;i++){const x=i%2?78:-78,z=-55+Math.floor(i/2)*10;mesh(box,0x8a9b65,x,2,z,1,4,1);mesh(sphere,0x6d9866,x,6,z,3,4,3);}
 const buildings=new T.InstancedMesh(box,mat(0xf6d9a6),512),roofs=new T.InstancedMesh(cone,mat(0x769886),512);scene.add(buildings,roofs);buildings.visible=roofs.visible=false;buildings.count=roofs.count=0;const dummy=new T.Object3D();
 const pool=Array.from({length:24},()=>({m:mesh(box,0xdb9371,0,0,0,1.5,1.5,1.5),active:false}));for(const p of pool)p.m.visible=false;
@@ -37,7 +41,7 @@ renderer.domElement.addEventListener('pointerdown',e=>{lastInput=performance.now
 renderer.domElement.addEventListener('pointermove',e=>{if(drag){yaw+=(e.clientX-drag.x)*.006;distance=Math.max(55,Math.min(320,distance+(e.clientY-drag.y)*.4));drag={x:e.clientX,y:e.clientY};lastInput=performance.now();}});renderer.domElement.addEventListener('pointerup',e=>{drag=null;const rect=renderer.domElement.getBoundingClientRect(),ray=new T.Raycaster();ray.setFromCamera(new T.Vector2((e.clientX-rect.left)/rect.width*2-1,1-(e.clientY-rect.top)/rect.height*2),camera);const hit=ray.intersectObjects(houseSprites.filter(m=>m.visible))[0];if(hit)select(world.households[hit.object.userData.index]);});
 renderer.domElement.addEventListener('wheel',e=>{e.preventDefault();distance=Math.max(55,Math.min(320,distance+e.deltaY*.1));lastInput=performance.now();},{passive:false});renderer.domElement.style.touchAction='none';
 let pinch=0;renderer.domElement.addEventListener('touchmove',e=>{if(e.touches.length===2){const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);if(pinch)distance=Math.max(55,Math.min(320,distance+pinch-d));pinch=d;lastInput=performance.now();}},{passive:true});renderer.domElement.addEventListener('touchend',()=>pinch=0);
-function overview(){target.set(0,0,30);distance=mobile?165:140;lastInput=performance.now();}$('overview').onclick=overview;$('close').onclick=()=>$('drawer').hidden=true;$('map-button').onclick=()=>$('map').classList.toggle('open');
+function overview(){target.set(0,0,30);distance=mobile?245:215;lastInput=performance.now();}$('overview').onclick=overview;$('close').onclick=()=>$('drawer').hidden=true;$('map-button').onclick=()=>$('map').classList.toggle('open');
 function animateEvent(e){if(e.type==='visit'){footprint(e.to);return;}if(e.type==='move_in'){const index=world.households.findIndex(h=>h.id===e.to);if(index>=0)growing.set(index,performance.now());return;}if(!['swap','letter_sent','letter_delivered'].includes(e.type))return;const paths=[route(e,homes)];if(e.type==='swap')paths.push(route({...e,from:e.to,to:e.from},homes));for(const points of paths){const p=pool.find(p=>!p.active);if(!p)break;Object.assign(p,{active:true,points,start:performance.now(),event:e});p.m.visible=true;p.m.material=mat(e.type==='swap'?0xda9d65:0x7eb8cb);}}
 const growing=new Map();
 function sync(raw){world=model(raw);homes.clear();for(const h of world.households)homes.set(h.id,h.position);const count=Math.min(512,world.households.length);buildings.count=roofs.count=count;
@@ -47,9 +51,9 @@ syncEmptyPlots(count);buildings.instanceMatrix.needsUpdate=roofs.instanceMatrix.
 $('timeline').replaceChildren();const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Taipei',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());for(const e of world.events.filter(e=>e.day===today)){const b=document.createElement('button');b.textContent=e.ts.slice(11,16)+' '+e.text;b.onclick=()=>focus(homes.get(e.to)||{x:0,z:57});$('timeline').append(b);}for(const e of world.events)if(e.type==='visit')footprint(e.to);for(const e of newEvents(world.events,seen,!started))animateEvent(e);started=true;$('status').textContent='每分鐘更新 · 未來'+world.village.level_name+'徽章';}
 let suggestions=[],patrolIndex=0,patrolTime=0;const clown=sprite('clown_patrol',0,5,60,13);label('小丑 · 只提出建議',0,9,60);
 async function refresh(){try{const r=await fetch(paths.world,{cache:'no-store'});if(!r.ok)throw Error('讀取失敗');sync(await r.json());const p=await fetch(paths.patrol,{cache:'no-store'});if(p.ok)suggestions=(await p.json()).suggestions||[];}catch(e){$('status').textContent='暫時讀不到更新，保留目前村子。';}}refresh();setInterval(refresh,60000);
-let last=performance.now(),slow=0,degraded=low,ticks=0,lastTour=0;window.worldMetrics={frames:0,pixelRatio:renderer.getPixelRatio(),degraded:false};
+let last=performance.now(),slow=0,degraded=low,ticks=0,lastTour=0;window.worldMetrics={frames:0,pixelRatio:renderer.getPixelRatio(),degraded:false,shadowMapSize:sun.shadow.mapSize.x,shadows:renderer.shadowMap.enabled};
 function frame(now){requestAnimationFrame(frame);if(document.hidden){last=now;return;}const dt=now-last;last=now;ticks++;window.worldMetrics.frames=ticks;
-if(dt>25&&dt<500)slow+=dt;else slow=0;if(slow>2000){if(!degraded){renderer.setPixelRatio(1);degraded=true;window.worldMetrics.degraded=true;window.worldMetrics.pixelRatio=1;slow=0;}else{location.replace(paths.street);return;}}
+if(dt>25&&dt<500)slow+=dt;else slow=0;if(slow>2000){if(!degraded){renderer.setPixelRatio(1);renderer.shadowMap.enabled=false;window.worldMetrics.shadows=false;degraded=true;window.worldMetrics.degraded=true;window.worldMetrics.pixelRatio=1;slow=0;}else{location.replace(paths.street);return;}}
 if(now-lastInput>45000&&now-lastTour>6500){const stops=[{x:0,z:0},...zones.map(z=>({x:z[1],z:z[2]})),...(world?.households.slice(0,3).map(h=>h.position)||[])];target.set(stops[tour%stops.length].x,0,stops[tour++%stops.length].z);distance=tour%5===0?230:110;lastTour=now;}
 camera.position.set(target.x+Math.sin(yaw)*distance*.7,distance*.78,target.z+Math.cos(yaw)*distance*.7);camera.lookAt(target);
 for(const [index,start] of growing){const h=world.households[index],scale=Math.min(1,(now-start)/1000);houseSprites[index].scale.set(28*Math.max(.01,scale),28*Math.max(.01,scale),1);dummy.position.set(h.position.x,3*scale,h.position.z);dummy.rotation.set(0,0,0);dummy.scale.set(6,Math.max(.01,6*scale),5);dummy.updateMatrix();buildings.setMatrixAt(index,dummy.matrix);buildings.instanceMatrix.needsUpdate=true;if(scale===1)growing.delete(index);}
