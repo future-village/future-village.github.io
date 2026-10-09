@@ -7,6 +7,21 @@ function localPolicy(root){const file=path.join(root,'.export-denylist.json');if
 const PNG_SIGNATURE=Buffer.from([137,80,78,71,13,10,26,10]);
 function imageIssue(buf,ext){
  if(buf.length>400*1024)return 'image exceeds 400KB';
+ if(ext==='.webp'){
+  if(buf.length<20||buf.toString('ascii',0,4)!=='RIFF'||buf.toString('ascii',8,12)!=='WEBP'||buf.readUInt32LE(4)+8!==buf.length)return 'invalid WebP container';
+  let offset=12,hasImage=false;
+  while(offset<buf.length){
+   if(offset+8>buf.length)return 'truncated WebP chunk';
+   const type=buf.toString('ascii',offset,offset+4),size=buf.readUInt32LE(offset+4);
+   if(size>buf.length-offset-8)return 'truncated WebP chunk';
+   if(['EXIF','XMP ','ICCP'].includes(type))return 'forbidden WebP metadata '+type;
+   if(!['VP8 ','VP8L','VP8X','ALPH'].includes(type))return 'unsupported WebP chunk '+type;
+   if(type==='VP8X'&&(size!==10||(buf[offset+8]&0x2e)!==0))return 'unsupported WebP flags';
+   if(type==='VP8 '||type==='VP8L')hasImage=true;
+   offset+=8+size+(size%2);
+  }
+  return offset===buf.length&&hasImage?null:'invalid WebP end';
+ }
  if(ext==='.png'){
   if(!buf.subarray(0,8).equals(PNG_SIGNATURE))return 'invalid PNG signature';
   let offset=8,ended=false;
@@ -53,7 +68,7 @@ function scan(base,files){
  const hits=[],activeRules=[...rules,...localPolicy(base).rules];let control=0,imageBytes=0;
  for(const rel of files){
   const buf=fs.readFileSync(path.join(base,rel)),ext=path.posix.extname(rel).toLowerCase();
-  if(rel.startsWith('site/assets/art/')&&['.png','.jpg','.jpeg'].includes(ext)){
+  if((rel.startsWith('site/assets/art/')&&['.png','.jpg','.jpeg'].includes(ext))||(rel.startsWith('site/assets/welcome/')&&['.webp','.jpg'].includes(ext))){
    imageBytes+=buf.length;const issue=imageIssue(buf,ext);if(issue)hits.push(rel+': '+issue);continue;
   }
   if(buf.includes(0)){hits.push(rel+': null byte');continue;}

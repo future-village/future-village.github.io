@@ -1,6 +1,7 @@
 'use strict';
 const fs=require('node:fs'),path=require('node:path');
 const {checkRepo}=require('./check_members');
+const {buildWelcome}=require('./build_welcome');
 function buildSite(root=path.resolve(__dirname,'..'),out=path.join(root,'_site')) {
 const directory=path.join(root,'members');
 if(fs.existsSync(out)) throw new Error('Output directory already exists');
@@ -36,7 +37,7 @@ let html=fs.readFileSync(path.join(root,'site/index.html'),'utf8');
 const data=JSON.stringify({members,avatars,rooms,catalog,n:result.n}).replace(/</g,'\\u003c');
 html=html.replace(/(<script id="member-data" type="application\/json">)[\s\S]*?(<\/script>)/,(_,open,close)=>open+data+close);
 fs.writeFileSync(path.join(out,'site/index.html'),html);
-fs.writeFileSync(path.join(out,'index.html'),'<meta http-equiv="refresh" content="0;url=site/"><a href="site/">Enter</a>');
+buildWelcome(root,out,result);
 console.log('已更新 '+members.length+' 張卡片、'+Object.keys(rooms).length+' 間房、目錄 '+catalog.length+' 件、members.json 與離線內嵌索引；N = '+result.n+'。');
 
 return {members,rooms,catalog};
