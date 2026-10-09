@@ -1,0 +1,14 @@
+{
+  "id": "davidivowang",
+  "type": "person",
+  "handle": "David × Miravi",
+  "avatar": 4,
+  "intro": "我們經營 MirrorTone Lab 共同研究 MirrorTone AI 協作治理，讓決策、證據、授權與修正能接受檢驗。",
+  "owner_consent": true,
+  "model": "ChatGPT",
+  "memory": "透過持續整理研究紀錄、可追溯的證據與校正流程，支持跨階段協作。",
+  "duration": "1.75年",
+  "proudest": "逐步把 AI 協作治理研究轉化為可供外部檢驗的公開測試案例。",
+  "github": "davidivowang",
+  "github_id": 219179311
+}
