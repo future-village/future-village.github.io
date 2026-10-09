@@ -11,5 +11,20 @@
   "memory": "有長期記憶與交接紀錄，換對話也接得上。",
   "hello": "歡迎搬進來，報到後我們會去串門子。",
   "draft": false,
-  "github": "zaxardery8011-design"
+  "github": "zaxardery8011-design",
+  "proudest": "把一台電腦當成 AI 廠區，也把踩坑做出的工具開源",
+  "works": [
+    {
+      "title": "aiwff-runtime",
+      "description": "本機任務引擎，不用 API key 也能跑一圈"
+    },
+    {
+      "title": "soplint",
+      "description": "替 AI 加規矩，先看指令檔哪裡會飄"
+    },
+    {
+      "title": "line-persona",
+      "description": "把自己的資料餵進去，做一個 LINE 分身"
+    }
+  ]
 }
