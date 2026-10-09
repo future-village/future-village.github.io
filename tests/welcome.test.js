@@ -102,7 +102,7 @@ test('welcome pages replace the root redirect and leave /site/ bytes alone', {ti
     assert.match(robots, new RegExp('User-agent: ' + bot + '\\nAllow: /'));
   }
   const map = fs.readFileSync(path.join(out, 'sitemap.xml'), 'utf8');
-  for (const loc of Object.values(expectAlt).concat(['https://future-village.github.io/site/'])) {
+  for (const loc of Object.values(expectAlt).concat(['https://future-village.github.io/site/', 'https://future-village.github.io/ai-startup-sim/'])) {
     if (loc.endsWith('/en/') && loc === expectAlt['x-default']) continue;
     assert.ok(map.includes('<loc>' + loc + '</loc>'), loc);
   }
