@@ -1,8 +1,8 @@
 import * as T from './assets/vendor/js/three/three.module.min.js';
 
 export const GROUND_TOP_Y=0.3,OUTLINE_SCALE=1.015;
-// Illustration anchors. Grass is pushed brighter: #a2ab99 -> #b8c1af, #8d9872 -> #a7b28c.
-export const PALETTE={grass:[0xb8c1af,0xa7b28c],grassHigh:0xc5d0b6,path:0xe5d2b0,pathJoint:0xd7c4a2,soil:0x9d9077,rock:0x948070,rockDark:0x7c6858,rockTip:0x645446,ink:0x2f464e};
+// Spring grass palette compensates for the warm scene light.
+export const PALETTE={grass:[0x7fbd80,0x70ab70],grassHigh:0x94ce96,path:0xe5d2b0,pathJoint:0xd7c4a2,soil:0x9d9077,rock:0x948070,rockDark:0x7c6858,rockTip:0x645446,ink:0x2f464e};
 
 let ramp;
 export function toonRamp(){
