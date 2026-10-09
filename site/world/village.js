@@ -39,7 +39,7 @@ const PROP_SPEC={
   bush_flowers:{w:5,h:3.6,billboard:true},
   lamp:{w:3.6,h:8,billboard:true,shadow:[2.8,1.8]},
   bench:{w:5.2,h:3,billboard:true},
-  fence:{w:16,h:3.2,billboard:false,doubleSide:true},
+  fence:{w:16,h:9.6,billboard:true,doubleSide:true},
 };
 export function billboardYaw(cameraX,cameraZ,x,z){return Math.atan2(cameraX-x,cameraZ-z);}
 export function propLayout(){
@@ -48,9 +48,9 @@ export function propLayout(){
   for(let i=0;i<24;i++){const p={x:i%2?78:-78,z:-55+Math.floor(i/2)*10,yaw:0};(i%2?tree_pine:tree_round).push(p);}
   for(let i=0;i<18;i++)lamp.push({x:-68+i*8,z:58,yaw:0});
   for(let i=0;i<12;i++)bush_flowers.push({x:i%2?-79:79,z:-57+Math.floor(i/2)*24,yaw:0});
-  // One card per rail run (the png is a whole fence). All of these boxes were long in X, so yaw stays 0.
-  for(const z of [-40,-36])fence.push({x:-43,z,yaw:0,w:16,h:3.2});
-  for(const [cx,cz] of [[-56,72],[56,72],[-55,-70],[55,-70]])fence.push({x:cx,z:cz,yaw:0,w:17,h:3.2});
+  // One upright card per rail run; update() turns it around Y toward the camera.
+  for(const z of [-40,-36])fence.push({x:-43,z,yaw:0,w:16,h:9.6});
+  for(const [cx,cz] of [[-56,72],[56,72],[-55,-70],[55,-70]])fence.push({x:cx,z:cz,yaw:0,w:17,h:10.2});
   // No bench meshes in the previous scene. Plaza flanks, and the north lip of the pond dock.
   const bench=[{x:-12,z:-62,yaw:0},{x:12,z:-62,yaw:0},{x:-54,z:-32,yaw:0},{x:-32,z:-32,yaw:0}];
   return {tree_round,tree_pine,bush_flowers,lamp,bench,fence};
