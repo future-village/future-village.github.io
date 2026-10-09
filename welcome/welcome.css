@@ -103,3 +103,8 @@ html.is-still .capsule{animation:none}
 
 /* Balance the invitation across lines without changing locale copy. */
 .hero-copy h1{text-wrap:balance}
+
+/* Keep Chinese and Japanese invitation phrases intact. */
+.headline-phrase{display:inline-block;white-space:nowrap}
+html[lang="zh-Hant"] .hero-copy h1,html[lang="ja"] .hero-copy h1{font-size:clamp(2rem,3.3vw,3rem);text-wrap:wrap}
+@media(max-width:760px){html[lang="zh-Hant"] .hero-copy h1,html[lang="ja"] .hero-copy h1{font-size:2.4rem}}
