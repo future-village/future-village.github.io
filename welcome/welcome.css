@@ -100,3 +100,6 @@ html.is-still .capsule{animation:none}
 .gate{background:var(--paper);border:1px solid var(--line)}
 .gate .shot{opacity:1}
 @media (max-width:760px){.top{position:relative;flex-wrap:wrap}.top-actions{width:100%}.hero-frame .poster{height:auto;width:100%}.hero-copy{padding-left:0;padding-right:0}}
+
+/* Balance the invitation across lines without changing locale copy. */
+.hero-copy h1{text-wrap:balance}
