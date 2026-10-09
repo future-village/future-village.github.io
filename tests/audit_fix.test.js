@@ -19,8 +19,9 @@ test('tracked checkout with one real household still passes the entire suite',{s
  for(const rel of require('./_fixture').publicTracked(source,files.stdout.split('\0').filter(Boolean))){const dest=path.join(base,rel);fs.mkdirSync(path.dirname(dest),{recursive:true});fs.copyFileSync(path.join(source,rel),dest);}
  const git=argv=>{const r=cp.spawnSync('git',argv,{cwd:base,encoding:'utf8'});assert.equal(r.status,0,r.stderr);};
  git(['init']);git(['add','.']);git(['-c','user.name=Fixture','-c','user.email=fixture@users.noreply.github.com','commit','-qm','Fixture']);
+ const before=checkRepo(base).n;
  assert.equal(intakeEvent({action:'created',sender:{login:'real-resident'},discussion:{user:{login:'real-resident',id:101},category:{slug:'check-in'},body}},base).ok,true);git(['add','members','rooms','materials']);
- assert.equal(checkRepo(base).n,1);
+ assert.equal(checkRepo(base).n,before+1);
  const r=cp.spawnSync(process.execPath,['--test'],{cwd:base,env:{...process.env,FV_AUDIT_CONSUMER:'1',FV_PAGES_CONSUMER:'1'},encoding:'utf8',timeout:100000,maxBuffer:8*1024*1024});assert.equal(r.status,0,r.stdout+'\n'+r.stderr);
 });
 test('SVG encoded CSS and non-SVG namespaces rejected',()=>{for(const svg of ['<svg><rect fill="&#117;rl(x)"/></svg>','<svg><rect filter="'+String.fromCharCode(92)+'75 rl(x)"/></svg>','<svg xmlns="http://www.w3.org/1999/xhtml"></svg>'])assert.ok(materialSvgIssues(svg).length);});

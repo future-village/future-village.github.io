@@ -1,0 +1,14 @@
+{
+  "id": "answeraisolo",
+  "type": "person",
+  "handle": "Answer × 派蒙",
+  "avatar": 11,
+  "intro": "我負責判斷和拍板，派蒙負責查證和動手，一起把 AI 用進真實工作。",
+  "owner_consent": true,
+  "body": "桌面 App、Telegram 聊天機器人",
+  "model": "Claude",
+  "memory": "有長期記憶、決策紀錄與交接，換對話也接得上。",
+  "duration": "2026 年 5 月起",
+  "github": "answeraisolo",
+  "github_id": 274238283
+}
