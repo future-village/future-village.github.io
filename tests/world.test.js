@@ -75,15 +75,21 @@ test('ground cap, toon ramp, thickened tapered island, ink shell and a bent lane
  assert.ok(cap);
  cap.geometry.computeBoundingBox();
  assert.ok(Math.abs(cap.position.y+cap.geometry.boundingBox.max.y-g.GROUND_TOP_Y)<1e-3);
- assert.equal(cap.material.type,'MeshToonMaterial');
- assert.equal(cap.material.color.getHex(),g.PALETTE.grass[0]);
- const gradient=cap.material.gradientMap;
- assert.equal(gradient.isDataTexture,true);
- assert.equal(gradient.image.width,3);
- assert.equal(gradient.image.height,1);
- assert.equal(gradient.magFilter,T.NearestFilter);
- assert.equal(gradient.minFilter,T.NearestFilter);
- assert.equal(gradient.generateMipmaps,false);
+  assert.equal(cap.material.type,'MeshBasicMaterial');
+  assert.equal(cap.material.color.getHex(),g.SURFACE_TINT);
+  assert.equal(cap.material.fog,true);
+  assert.equal(cap.material.map.wrapS,T.RepeatWrapping);
+  assert.equal(cap.material.map.wrapT,T.RepeatWrapping);
+  assert.match(cap.material.map.userData.src,/tile_grass\.png$/);
+  const side=slabs.find(o=>o!==cap&&o.material.type==='MeshToonMaterial');
+  assert.ok(side);
+  const gradient=side.material.gradientMap;
+  assert.equal(gradient.isDataTexture,true);
+  assert.equal(gradient.image.width,3);
+  assert.equal(gradient.image.height,1);
+  assert.equal(gradient.magFilter,T.NearestFilter);
+  assert.equal(gradient.minFilter,T.NearestFilter);
+  assert.equal(gradient.generateMipmaps,false);
  const oldSpan=.3-(-12),lowest=Math.min(...slabs.map(o=>o.userData.bottom));
  assert.ok(g.GROUND_TOP_Y-lowest>=oldSpan*3);
  assert.ok(slabs.length>=5);
@@ -93,6 +99,109 @@ test('ground cap, toon ramp, thickened tapered island, ink shell and a bent lane
  for(const shell of shells){assert.equal(shell.material.side,T.BackSide);assert.equal(shell.material.color.getHex(),g.PALETTE.ink);assert.ok(Math.abs(shell.scale.x-g.OUTLINE_SCALE)<1e-6);}
  const north=scene.children.filter(o=>o.userData.lane==='north');
  assert.ok(north.length>=4);
- assert.equal(north[0].material.color.getHex(),g.PALETTE.path);
+  assert.equal(north[0].material.type,'MeshBasicMaterial');
+  assert.equal(north[0].material.color.getHex(),g.SURFACE_TINT);
+  assert.equal(north[0].material.map.wrapS,T.RepeatWrapping);
+  assert.match(north[0].material.map.userData.src,/tile_path_stone\.png$/);
+
  assert.ok(new Set(north.map(o=>o.position.z.toFixed(2))).size>1);
+});
+
+test('route C cards replace procedural trees and stay planted',async()=>{
+  const T=await import('../site/world/assets/vendor/js/three/three.module.min.js');
+  const v=await import('../site/world/village.js');
+  const g=await import('../site/world/ground.mjs');
+  const villageSrc=fs.readFileSync(path.join(__dirname,'../site/world/village.js'),'utf8');
+  const groundSrc=fs.readFileSync(path.join(__dirname,'../site/world/ground.mjs'),'utf8');
+  for(const hex of ['0x6d9866','0x8a9b65','0xffd58a','0xffdfa0'])assert.equal(villageSrc.includes(hex),false,hex);
+  for(const hex of ['0x526f47','0xe9c075','0xd9908b','0xe7dccc','0x8f6d48','0xd0b58a','0xc0a477'])assert.equal(groundSrc.includes(hex),false,hex);
+  assert.match(villageSrc,/buildPropCards\(scene,\s*shadowMat\)/);
+  assert.match(villageSrc,/propCards\.update\(camera\)/);
+  const scene=new T.Scene();
+  g.buildGround(scene);
+  const props=v.buildPropCards(scene);
+  const spots=[];
+  for(let i=0;i<24;i++)spots.push([i%2?78:-78,-55+Math.floor(i/2)*10]);
+  let proceduralTrees=0;
+  scene.traverse(o=>{
+    if(!o.isMesh||o.isInstancedMesh)return;
+    const geo=o.geometry;
+    if(!geo||(geo.type!=='BoxGeometry'&&geo.type!=='SphereGeometry'))return;
+    if(spots.some(([x,z])=>Math.abs(o.position.x-x)<1e-6&&Math.abs(o.position.z-z)<1e-6))proceduralTrees++;
+  });
+  assert.equal(proceduralTrees,0);
+  assert.equal(props.counts.tree_round+props.counts.tree_pine,24);
+  assert.equal(props.counts.lamp,18);
+  assert.equal(props.counts.bush_flowers,12);
+  assert.equal(props.counts.fence,6);
+  for(const kind of ['tree_round','tree_pine','bush_flowers','lamp','bench','fence'])assert.ok(props.counts[kind]>0,kind);
+  for(let i=0;i<12;i++){
+    const z=-55+i*10;
+    assert.ok(props.layout.tree_round.some(p=>p.x===-78&&p.z===z));
+    assert.ok(props.layout.tree_pine.some(p=>p.x===78&&p.z===z));
+  }
+  assert.equal(props.layout.lamp[0].x,-68);assert.equal(props.layout.lamp[17].x,68);assert.equal(props.layout.lamp[0].z,58);
+  assert.equal(props.layout.bush_flowers[0].x,79);assert.equal(props.layout.bush_flowers[0].z,-57);
+  assert.ok(props.layout.fence.some(p=>p.x===-43&&p.z===-40&&p.yaw===0));
+  assert.ok(props.layout.fence.some(p=>p.x===-56&&p.z===72&&p.yaw===0));
+  const matrix=new T.Matrix4(),pos=new T.Vector3(),quat=new T.Quaternion(),scale=new T.Vector3();
+  for(const [kind,mesh] of Object.entries(props.meshes)){
+    assert.equal(mesh.geometry.type,'PlaneGeometry');
+    assert.equal(mesh.material.alphaTest,v.PROP_ALPHA_TEST);
+    assert.equal(mesh.material.transparent,false);
+    assert.equal(mesh.material.depthWrite,true);
+    assert.equal(mesh.material.fog,true);
+    assert.equal(mesh.material.color.getHex(),v.HOUSE_WARM);
+    assert.equal(mesh.material.side,kind==='fence'?T.DoubleSide:T.FrontSide);
+    assert.match(mesh.material.map.userData.src,new RegExp(kind+'\\.png$'));
+    for(let i=0;i<mesh.count;i++){
+      mesh.getMatrixAt(i,matrix);matrix.decompose(pos,quat,scale);
+      assert.ok(Math.abs(v.houseMeshBottomY(pos.y,scale.y)-v.GROUND_TOP_Y)<1e-6,kind);
+    }
+  }
+  function fenceYaws(){
+    const out=[];
+    for(let i=0;i<props.meshes.fence.count;i++){
+      props.meshes.fence.getMatrixAt(i,matrix);matrix.decompose(pos,quat,scale);
+      out.push(new T.Euler().setFromQuaternion(quat,'XYZ').y);
+    }
+    return out;
+  }
+  const before=fenceYaws();
+  for(const y of before)assert.ok(Math.abs(y)<1e-6);
+  props.update({position:{x:100,y:40,z:-20}});
+  props.update({position:{x:-90,y:15,z:70}});
+  const after=fenceYaws();
+  assert.equal(after.length,before.length);
+  for(let i=0;i<before.length;i++)assert.ok(Math.abs(after[i]-before[i])<1e-6);
+  const lamp=props.layout.lamp[0];
+  props.update({position:{x:lamp.x+10,y:30,z:lamp.z}});
+  props.meshes.lamp.getMatrixAt(0,matrix);matrix.decompose(pos,quat,scale);
+  assert.ok(Math.abs(new T.Euler().setFromQuaternion(quat,'XYZ').y-Math.PI/2)<1e-5);
+  assert.equal(props.shadows.count,props.counts.tree_round+props.counts.tree_pine+props.counts.lamp);
+  for(let i=0;i<props.shadows.count;i++){
+    props.shadows.getMatrixAt(i,matrix);matrix.decompose(pos,quat,scale);
+    assert.ok(scale.x<18&&scale.z<12);
+    assert.ok(Math.abs(pos.y-(v.GROUND_TOP_Y+.04))<1e-6);
+  }
+});
+test('grass cap and stone lanes use repeating painted tiles',async()=>{
+  const T=await import('../site/world/assets/vendor/js/three/three.module.min.js');
+  const g=await import('../site/world/ground.mjs');
+  const scene=new T.Scene();
+  g.buildGround(scene);
+  const slabs=scene.children.filter(o=>o.userData.role==='slab');
+  const cap=slabs.find(o=>Math.abs(o.userData.top-g.GROUND_TOP_Y)<1e-9);
+  const sides=slabs.filter(o=>o!==cap);
+  assert.ok(sides.length>=4);
+  assert.ok(sides.every(o=>o.material.type==='MeshToonMaterial'));
+  let grassUv=0;const guv=cap.geometry.attributes.uv;
+  for(let i=0;i<guv.count;i++)grassUv=Math.max(grassUv,Math.abs(guv.getX(i)),Math.abs(guv.getY(i)));
+  assert.ok(grassUv>5&&grassUv<20);
+  const north=scene.children.filter(o=>o.userData.lane==='north');
+  let pathUv=0;
+  for(const lane of north){const uv=lane.geometry.attributes.uv;for(let i=0;i<uv.count;i++)pathUv=Math.max(pathUv,Math.abs(uv.getX(i)),Math.abs(uv.getY(i)));}
+  assert.ok(pathUv>1.2);
+  const shells=scene.children.filter(o=>o.userData.role==='shell');
+  assert.equal(shells.length,slabs.length);
 });

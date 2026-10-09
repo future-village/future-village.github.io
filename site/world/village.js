@@ -29,6 +29,80 @@ export function cameraPose(targetX,targetY,targetZ,distance,pitch,yaw){
   return {position,pitch:measured};
 }
 
+// Cutout cards share the house material rules. alphaTest is 0.5 here; houses stay at 0.4.
+export const PROP_ALPHA_TEST=.5;
+const PROP_FILE={tree_round:'tree_round.png',tree_pine:'tree_pine.png',bush_flowers:'bush_flowers.png',lamp:'lamp.png',bench:'bench.png',fence:'fence.png'};
+// Plane is 1x1 and centered. w/h are world units. Shadows are smaller than the house decal (18 x 12).
+const PROP_SPEC={
+  tree_round:{w:8,h:11,billboard:true,shadow:[6.5,4.2]},
+  tree_pine:{w:7,h:13,billboard:true,shadow:[6.2,3.8]},
+  bush_flowers:{w:5,h:3.6,billboard:true},
+  lamp:{w:3.6,h:8,billboard:true,shadow:[2.8,1.8]},
+  bench:{w:5.2,h:3,billboard:true},
+  fence:{w:16,h:3.2,billboard:false,doubleSide:true},
+};
+export function billboardYaw(cameraX,cameraZ,x,z){return Math.atan2(cameraX-x,cameraZ-z);}
+export function propLayout(){
+  const tree_round=[],tree_pine=[],lamp=[],bush_flowers=[],fence=[];
+  // Old loop was 24 trunk+canopy meshes. i%2 already picked x = ±78, so west is round and east is pine.
+  for(let i=0;i<24;i++){const p={x:i%2?78:-78,z:-55+Math.floor(i/2)*10,yaw:0};(i%2?tree_pine:tree_round).push(p);}
+  for(let i=0;i<18;i++)lamp.push({x:-68+i*8,z:58,yaw:0});
+  for(let i=0;i<12;i++)bush_flowers.push({x:i%2?-79:79,z:-57+Math.floor(i/2)*24,yaw:0});
+  // One card per rail run (the png is a whole fence). All of these boxes were long in X, so yaw stays 0.
+  for(const z of [-40,-36])fence.push({x:-43,z,yaw:0,w:16,h:3.2});
+  for(const [cx,cz] of [[-56,72],[56,72],[-55,-70],[55,-70]])fence.push({x:cx,z:cz,yaw:0,w:17,h:3.2});
+  // No bench meshes in the previous scene. Plaza flanks, and the north lip of the pond dock.
+  const bench=[{x:-12,z:-62,yaw:0},{x:12,z:-62,yaw:0},{x:-54,z:-32,yaw:0},{x:-32,z:-32,yaw:0}];
+  return {tree_round,tree_pine,bush_flowers,lamp,bench,fence};
+}
+function propTexture(file){
+  const src=worldPaths(import.meta.url).art('props/'+file.replace(/\.png$/, ''));
+  const tex=typeof document==='undefined'?new T.Texture():new T.TextureLoader().load(src);
+  tex.colorSpace=T.SRGBColorSpace;tex.needsUpdate=true;tex.userData.src=src;return tex;
+}
+function propMaterial(file,doubleSide){
+  const material=new T.MeshLambertMaterial({map:propTexture(file),color:HOUSE_WARM,alphaTest:PROP_ALPHA_TEST,transparent:false,fog:true,premultipliedAlpha:false,side:doubleSide?T.DoubleSide:T.FrontSide});
+  material.depthWrite=true;return material;
+}
+function contactShadowTexture(){
+  if(typeof document==='undefined'){const tex=new T.DataTexture(new Uint8Array([47,70,78,96]),1,1,T.RGBAFormat);tex.colorSpace=T.SRGBColorSpace;tex.needsUpdate=true;return tex;}
+  const canvas=document.createElement('canvas');canvas.width=canvas.height=128;const g=canvas.getContext('2d'),brush=g.createRadialGradient(64,64,6,64,64,62);
+  brush.addColorStop(0,'rgba(47,70,78,.38)');brush.addColorStop(.45,'rgba(47,70,78,.16)');brush.addColorStop(1,'rgba(47,70,78,0)');
+  g.fillStyle=brush;g.fillRect(0,0,128,128);const texture=new T.CanvasTexture(canvas);texture.colorSpace=T.SRGBColorSpace;texture.needsUpdate=true;return texture;
+}
+function defaultShadowMaterial(){
+  const material=new T.MeshBasicMaterial({map:contactShadowTexture(),transparent:true,depthWrite:false,fog:true});
+  material.polygonOffset=true;material.polygonOffsetFactor=-2;material.polygonOffsetUnits=-2;return material;
+}
+export function buildPropCards(scene,shadowMaterial){
+  const layout=propLayout(),meshes={},dummy=new T.Object3D();
+  function place(mesh,i,x,z,yaw,w,h){dummy.position.set(x,GROUND_TOP_Y+h/2,z);dummy.rotation.set(0,yaw,0);dummy.scale.set(w,h,1);dummy.updateMatrix();mesh.setMatrixAt(i,dummy.matrix);}
+  for(const kind of Object.keys(PROP_SPEC)){
+    const spec=PROP_SPEC[kind],items=layout[kind],mesh=new T.InstancedMesh(new T.PlaneGeometry(1,1),propMaterial(PROP_FILE[kind],spec.doubleSide),items.length);
+    mesh.count=items.length;mesh.frustumCulled=false;mesh.castShadow=mesh.receiveShadow=false;mesh.renderOrder=2;
+    mesh.userData.role='prop-card';mesh.userData.kind=kind;mesh.userData.billboard=!!spec.billboard;
+    items.forEach((p,i)=>place(mesh,i,p.x,p.z,p.yaw||0,p.w||spec.w,p.h||spec.h));
+    mesh.instanceMatrix.needsUpdate=true;scene.add(mesh);meshes[kind]=mesh;
+  }
+  const shadowSpots=[];
+  for(const kind of Object.keys(PROP_SPEC)){const spec=PROP_SPEC[kind];if(!spec.shadow)continue;for(const p of layout[kind])shadowSpots.push({x:p.x,z:p.z,w:spec.shadow[0],d:spec.shadow[1]});}
+  const shadowGeo=new T.PlaneGeometry(1,1);shadowGeo.rotateX(-Math.PI/2);
+  const shadowMesh=new T.InstancedMesh(shadowGeo,shadowMaterial||defaultShadowMaterial(),Math.max(1,shadowSpots.length));
+  shadowMesh.count=shadowSpots.length;shadowMesh.frustumCulled=false;shadowMesh.castShadow=shadowMesh.receiveShadow=false;shadowMesh.renderOrder=1;shadowMesh.userData.role='prop-shadow';
+  shadowSpots.forEach((p,i)=>{dummy.position.set(p.x,GROUND_TOP_Y+.04,p.z);dummy.rotation.set(0,0,0);dummy.scale.set(p.w,1,p.d);dummy.updateMatrix();shadowMesh.setMatrixAt(i,dummy.matrix);});
+  shadowMesh.instanceMatrix.needsUpdate=true;scene.add(shadowMesh);
+  function update(camera){
+    for(const kind of Object.keys(PROP_SPEC)){
+      const spec=PROP_SPEC[kind];if(!spec.billboard)continue;
+      const mesh=meshes[kind];
+      layout[kind].forEach((p,i)=>place(mesh,i,p.x,p.z,billboardYaw(camera.position.x,camera.position.z,p.x,p.z),p.w||spec.w,p.h||spec.h));
+      mesh.instanceMatrix.needsUpdate=true;
+    }
+  }
+  const counts={};for(const kind of Object.keys(PROP_SPEC))counts[kind]=layout[kind].length;
+  return {layout,counts,meshes,shadows:shadowMesh,update};
+}
+
 const page=typeof document!=='undefined'&&document.getElementById&&document.getElementById('stage');
 if(page)start();
 
@@ -55,7 +129,6 @@ function start(){
   function sprite(name,x,y,z,size){const m=new T.Sprite(spriteMaterial(name));m.position.set(x,y,z);m.scale.set(size,size,1);scene.add(m);return m;}
   const zones=[['村口告示牌',0,78,'notice_board',16],['交換市集',-40,57,'market'],['郵局',0,57,'post_office'],['書架館',40,57,'library'],['廣場',0,-57,'plaza']];
   for(const [name,x,z,art,size=28] of zones){sprite(art,x,12,z,size);label(name,x,29,z);}
-  for(let i=0;i<18;i++){const x=-68+i*8;mesh(box,0xffd58a,x,3,58,.4,6,.4);mesh(sphere,0xffdfa0,x,6,58,.8,.8,.8);}
   function houseVariant(id){let hash=2166136261;for(const c of id)hash=Math.imul(hash^c.charCodeAt(0),16777619);return 1+(hash>>>0)%6;}
   const houseGeo=new T.PlaneGeometry(1,1),houseMats=new Map();
   function houseMaterial(name){
@@ -67,15 +140,11 @@ function start(){
     return houseMats.get(name);
   }
   const houseMeshes=Array.from({length:512},()=>{const m=new T.Mesh(houseGeo,houseMaterial('house_1'));m.visible=false;m.castShadow=m.receiveShadow=false;m.renderOrder=2;scene.add(m);return m;});
-  function contactShadowTexture(){
-    const canvas=document.createElement('canvas');canvas.width=canvas.height=128;const g=canvas.getContext('2d'),brush=g.createRadialGradient(64,64,6,64,64,62);
-    brush.addColorStop(0,'rgba(47,70,78,.38)');brush.addColorStop(.45,'rgba(47,70,78,.16)');brush.addColorStop(1,'rgba(47,70,78,0)');
-    g.fillStyle=brush;g.fillRect(0,0,128,128);const texture=new T.CanvasTexture(canvas);texture.colorSpace=T.SRGBColorSpace;texture.needsUpdate=true;return texture;
-  }
   const shadowGeo=new T.PlaneGeometry(1,1);shadowGeo.rotateX(-Math.PI/2);
   const shadowMat=new T.MeshBasicMaterial({map:contactShadowTexture(),transparent:true,depthWrite:false,fog:true});
   shadowMat.polygonOffset=true;shadowMat.polygonOffsetFactor=-2;shadowMat.polygonOffsetUnits=-2;
   const contactShadows=new T.InstancedMesh(shadowGeo,shadowMat,512);contactShadows.count=0;contactShadows.frustumCulled=false;contactShadows.castShadow=false;contactShadows.receiveShadow=false;contactShadows.renderOrder=1;scene.add(contactShadows);
+  const propCards=buildPropCards(scene,shadowMat);
   const pads=new T.InstancedMesh(new T.BoxGeometry(1,1,1),new T.MeshToonMaterial({color:PAD_COLOR,gradientMap:toonRamp()}),512);
   pads.count=0;pads.frustumCulled=false;pads.castShadow=false;pads.receiveShadow=true;scene.add(pads);
   const dummy=new T.Object3D();
@@ -83,7 +152,6 @@ function start(){
   label('住宅區',0,2,15);const bookLabel=label('書架等第一本',40,4,57);
   const emptyPlots=[];
   function syncEmptyPlots(count){for(const p of emptyPlots){scene.remove(p.mesh,p.post,p.sign);p.label.el.remove();labels.splice(labels.indexOf(p.label),1);}emptyPlots.length=0;for(const p of roadsidePlots(count+6).slice(count)){const pad=mesh(box,0x8c9b70,p.x,.5,p.z,18,.15,16),post=mesh(box,0x795438,p.x,2,p.z,1,4,1),sign=mesh(box,0xae855a,p.x,4,p.z,7,2,.5);label("空地・等你搬來",p.x,5,p.z);emptyPlots.push({mesh:pad,post,sign,label:labels.at(-1)});}}
-  for(let i=0;i<24;i++){const x=i%2?78:-78,z=-55+Math.floor(i/2)*10;mesh(box,0x8a9b65,x,2,z,1,4,1);mesh(sphere,0x6d9866,x,6,z,3,4,3);}
   const pool=Array.from({length:24},()=>({m:mesh(box,0xdb9371,0,0,0,1.5,1.5,1.5),active:false}));for(const p of pool)p.m.visible=false;
   const footprints=new T.InstancedMesh(sphere,mat(0x7e6453),512);footprints.count=0;footprints.frustumCulled=false;scene.add(footprints);const visited=new Set();
   function footprint(id){if(visited.has(id)||!homes.has(id)||footprints.count===512)return;visited.add(id);const p=homes.get(id);dummy.position.set(p.x+4,.8,p.z+4);dummy.scale.set(.8,.2,.5);dummy.rotation.set(0,0,0);dummy.updateMatrix();footprints.setMatrixAt(footprints.count++,dummy.matrix);footprints.instanceMatrix.needsUpdate=true;}
@@ -121,6 +189,7 @@ function start(){
     if(dt>25&&dt<500)slow+=dt;else slow=0;if(slow>2000){if(!degraded){renderer.setPixelRatio(1);renderer.shadowMap.enabled=false;window.worldMetrics.shadows=false;degraded=true;window.worldMetrics.degraded=true;window.worldMetrics.pixelRatio=1;slow=0;}else{location.replace(paths.street);return;}}
     if(now-lastInput>45000&&now-lastTour>6500){const stops=[{x:0,z:0},...zones.map(z=>({x:z[1],z:z[2]})),...(world?.households.slice(0,3).map(h=>h.position)||[])];target.set(stops[tour%stops.length].x,0,stops[tour++%stops.length].z);distance=tour%5===0?230:110;lastTour=now;}
     pitch=clampPitch(pitch);const posed=cameraPose(target.x,target.y,target.z,distance,pitch,yaw);camera.position.set(posed.position.x,posed.position.y,posed.position.z);camera.lookAt(target);
+    propCards.update(camera);
     for(let i=0;i<houseMeshes.length;i++){
       const art=houseMeshes[i];if(!art.visible)continue;let height=HOUSE_H;
       if(growing.has(i)){const scale=Math.min(1,(now-growing.get(i))/1000);height=HOUSE_H*Math.max(.01,scale);if(scale===1)growing.delete(i);}
