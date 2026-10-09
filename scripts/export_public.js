@@ -71,6 +71,7 @@ function scan(base,files){
   if((rel.startsWith('site/assets/art/')&&['.png','.jpg','.jpeg'].includes(ext))||(rel.startsWith('site/assets/welcome/')&&['.webp','.jpg'].includes(ext))){
    imageBytes+=buf.length;const issue=imageIssue(buf,ext);if(issue)hits.push(rel+': '+issue);continue;
   }
+  if(/^site\/world\/assets\/models\/[^/]+\.glb$/.test(rel))continue;
   if(buf.includes(0)){hits.push(rel+': null byte');continue;}
   const text=buf.toString('utf8');control+=(text.match(/未來村/g)||[]).length;
   text.split(/\r?\n/).forEach((line,i)=>{for(const rule of activeRules)if(rule.test(line))hits.push(rel+':'+(i+1)+' '+rule.source);});

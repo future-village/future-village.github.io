@@ -106,6 +106,105 @@ export function buildPropCards(scene,shadowMaterial){
   return {layout,counts,meshes,shadows:shadowMesh,update};
 }
 
+const PROP_GLB=[
+  ['fence','fence_run',{w:16,h:2.4,d:0.5}],
+];
+function errText(err){
+  if(!err)return 'load failed';
+  if(err.message)return err.message;
+  if(err.error&&err.error.message)return err.error.message;
+  return String(err);
+}
+function loadGltf(loader,url){return new Promise((resolve,reject)=>loader.load(url,resolve,undefined,reject));}
+function paintShadow(root,on){
+  root.traverse(obj=>{
+    if(!obj.isMesh)return;
+    const list=Array.isArray(obj.material)?obj.material:[obj.material];
+    const unlit=list.some(material=>material&&material.isMeshBasicMaterial);
+    obj.castShadow=on;
+    obj.receiveShadow=on&&!unlit;
+    obj.frustumCulled=false;
+    for(const material of list){
+      if(!material)continue;
+      material.fog=true;
+      if(material.map)material.map.colorSpace=T.SRGBColorSpace;
+    }
+  });
+}
+function makeTemplate(sceneRoot,box,castOn){
+  const holder=new T.Group();
+  holder.add(sceneRoot);
+  const size=new T.Box3().setFromObject(sceneRoot).getSize(new T.Vector3());
+  const s=Math.min(box.w/Math.max(size.x,1e-4),box.h/Math.max(size.y,1e-4),box.d/Math.max(size.z,1e-4));
+  sceneRoot.scale.setScalar(s);
+  sceneRoot.updateMatrixWorld(true);
+  const fitted=new T.Box3().setFromObject(sceneRoot);
+  const center=fitted.getCenter(new T.Vector3());
+  sceneRoot.position.set(-center.x,-fitted.min.y,-center.z);
+  paintShadow(sceneRoot,castOn);
+  holder.userData.achievedW=size.x*s;
+  holder.userData.achievedH=size.y*s;
+  holder.userData.achievedD=size.z*s;
+  holder.userData.fitW=box.w;
+  return holder;
+}
+function placeTemplate(template,x,z,yaw,span){
+  const obj=template.clone(true);
+  obj.scale.setScalar(span);
+  obj.position.set(x,GROUND_TOP_Y,z);
+  obj.rotation.set(0,yaw,0);
+  obj.userData.role='prop-glb';
+  obj.userData.kind=template.userData.kind;
+  return obj;
+}
+async function swapVillageProps(scene,props,castOn,report){
+  try{
+    let loader;
+    try{
+      const mod=await import('./assets/vendor/js/three/examples/jsm/loaders/GLTFLoader.js');
+      loader=new mod.GLTFLoader();
+    }catch(err){
+      report.failed.push({kind:'loader',file:'GLTFLoader.js',message:errText(err)});
+      return;
+    }
+    for(const [kind,file,box] of PROP_GLB){
+      const group=new T.Group();
+      group.name='prop-glb-'+kind;
+      group.userData.role='prop-glb';
+      group.userData.kind=kind;
+      try{
+        const gltf=await loadGltf(loader,'./assets/models/'+file+'.glb');
+        const template=makeTemplate(gltf.scene,box,castOn);
+        template.userData.kind=kind;
+        if(kind==='fence'){
+          const segW=template.userData.achievedW;
+          if(!(segW>0))throw new Error('fence segment width');
+          for(const p of props.layout.fence){
+            const run=p.w||segW;
+            const n=Math.max(1,Math.ceil(run/segW-1e-6));
+            if(n>8)throw new Error('fence segment count '+n);
+            const step=run/n;
+            for(let i=0;i<n;i++)group.add(placeTemplate(template,p.x-run/2+step*(i+0.5),p.z,0,1));
+          }
+        }else{
+          for(const p of props.layout[kind]){
+            const span=(p.w||box.w)/box.w;
+            group.add(placeTemplate(template,p.x,p.z,0,span));
+          }
+        }
+        scene.add(group);
+        scene.remove(props.meshes[kind]);
+        report.swapped.push({kind,file,instances:group.children.length});
+      }catch(err){
+        if(group.parent)scene.remove(group);
+        report.failed.push({kind,file,message:errText(err)});
+      }
+    }
+  }finally{
+    report.pending=false;
+  }
+}
+
 const page=typeof document!=='undefined'&&document.getElementById&&document.getElementById('stage');
 if(page)start();
 
@@ -148,6 +247,9 @@ function start(){
   shadowMat.polygonOffset=true;shadowMat.polygonOffsetFactor=-2;shadowMat.polygonOffsetUnits=-2;
   const contactShadows=new T.InstancedMesh(shadowGeo,shadowMat,512);contactShadows.count=0;contactShadows.frustumCulled=false;contactShadows.castShadow=false;contactShadows.receiveShadow=false;contactShadows.renderOrder=1;scene.add(contactShadows);
   const propCards=buildPropCards(scene,shadowMat);
+  const propSwap={pending:true,swapped:[],failed:[]};
+  window.__propSwap=propSwap;
+  swapVillageProps(scene,propCards,!low,propSwap).catch(err=>{propSwap.failed.push({kind:'loader',file:'',message:errText(err)});propSwap.pending=false;});
   const pads=new T.InstancedMesh(new T.BoxGeometry(1,1,1),new T.MeshToonMaterial({color:PAD_COLOR,gradientMap:toonRamp()}),512);
   pads.count=0;pads.frustumCulled=false;pads.castShadow=false;pads.receiveShadow=true;scene.add(pads);
   const dummy=new T.Object3D();
