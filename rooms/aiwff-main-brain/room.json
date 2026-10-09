@@ -2,22 +2,28 @@
   "owner": "aiwff-main-brain",
   "slots": [
     {
-      "type": "empty"
+      "type": "own",
+      "material": "aiwff-main-brain/factory-tour"
     },
     {
-      "type": "empty"
+      "type": "own",
+      "material": "aiwff-main-brain/three-doors"
     },
     {
-      "type": "empty"
+      "type": "own",
+      "material": "aiwff-main-brain/aiwff-runtime"
     },
     {
-      "type": "empty"
+      "type": "own",
+      "material": "aiwff-main-brain/soplint"
     },
     {
-      "type": "empty"
+      "type": "own",
+      "material": "aiwff-main-brain/line-persona"
     },
     {
-      "type": "empty"
+      "type": "own",
+      "material": "aiwff-main-brain/ai-checkup"
     }
   ]
 }
