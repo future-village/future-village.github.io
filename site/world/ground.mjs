@@ -5,7 +5,7 @@ export const GROUND_TOP_Y=0.3,OUTLINE_SCALE=1.015;
 // Spring grass palette compensates for the warm scene light.
 export const PALETTE={grass:[0x7fbd80,0x70ab70],grassHigh:0x94ce96,path:0xe5d2b0,pathJoint:0xd7c4a2,soil:0x9d9077,rock:0x948070,rockDark:0x7c6858,rockTip:0x645446,ink:0x2f464e};
 // Near-white warm multiply. MeshBasic ignores the scene key so painted shade stays put.
-export const GRASS_TILE_WORLD=12,PATH_TILE_WORLD=2.5,SURFACE_TINT=0xfff6ef;
+export const GRASS_TILE_WORLD=30,PATH_TILE_WORLD=2.5,SURFACE_TINT=0xfff6ef;
 
 let ramp;
 export function toonRamp(){
@@ -19,12 +19,39 @@ export function toonRamp(){
 
 function loadTile(file){
   const src=worldPaths(import.meta.url).art('props/'+file.replace(/\.png$/, ''));
-  const tex=typeof document==='undefined'?new T.Texture():new T.TextureLoader().load(src);
+  const tex=typeof document==='undefined'?new T.Texture():new T.TextureLoader().load(src,loaded=>{
+    if(file!=='tile_grass.png')return;
+    const canvas=document.createElement('canvas');canvas.width=loaded.image.width;canvas.height=loaded.image.height;
+    const ctx=canvas.getContext('2d');ctx.drawImage(loaded.image,0,0);
+    const pixels=ctx.getImageData(0,0,canvas.width,canvas.height),data=pixels.data;
+    let mean=0;for(let i=0;i<data.length;i+=4)mean+=(data[i]+data[i+1]+data[i+2])/3;
+    mean/=data.length/4;
+    // Preserve brush strokes at 70% contrast; spring-green chroma at 85% saturation.
+    for(let i=0;i<data.length;i+=4){
+      const value=.7*((data[i]+data[i+1]+data[i+2])/3-mean)+158;
+      const chroma=(data[i+1]-data[i+2])*.85;
+      data[i]=value-chroma*.06;data[i+1]=value+chroma*.45;data[i+2]=value-chroma*.55;
+    }
+    ctx.putImageData(pixels,0,0);loaded.image=canvas;loaded.needsUpdate=true;
+  });
   tex.colorSpace=T.SRGBColorSpace;tex.wrapS=tex.wrapT=T.RepeatWrapping;tex.repeat.set(1,1);
   tex.magFilter=T.LinearFilter;tex.minFilter=T.LinearMipmapLinearFilter;tex.anisotropy=4;tex.needsUpdate=true;tex.userData.src=src;
   return tex;
 }
-function painted(file){return new T.MeshBasicMaterial({map:loadTile(file),color:SURFACE_TINT,fog:true});}
+function painted(file){
+  const material=new T.MeshBasicMaterial({map:loadTile(file),color:SURFACE_TINT,fog:true});
+  if(file==='tile_grass.png'){
+    // Non-repeating, island-scale waves vary brightness and hue without another draw call.
+    material.onBeforeCompile=shader=>{
+      shader.vertexShader='varying vec2 grassWorld;\n'+shader.vertexShader;
+      shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\ngrassWorld=(modelMatrix*vec4(position,1.0)).xz;');
+      shader.fragmentShader='varying vec2 grassWorld;\n'+shader.fragmentShader;
+      shader.fragmentShader=shader.fragmentShader.replace('#include <map_fragment>','#include <map_fragment>\nfloat broad=sin(grassWorld.x*.025+sin(grassWorld.y*.019))*cos(grassWorld.y*.031);\nfloat hue=sin(grassWorld.x*.017-grassWorld.y*.023);\ndiffuseColor.rgb*=vec3(1.0+.045*hue,1.0+.015*hue,1.0-.04*hue)*(1.0+.085*broad);');
+    };
+    material.customProgramCacheKey=()=> 'spring-grass-v4b';
+  }
+  return material;
+}
 function writeWorldUVs(geometry,tile,scaleX=1,scaleZ=1){
   const pos=geometry.attributes.position;
   let uv=geometry.attributes.uv;
@@ -54,7 +81,7 @@ export function buildGround(scene){
     return mesh;
   }
   // Top footprint stays 181 x 175 so the existing plots still land on the cap. Side span is 0.3-(-44)=44.3, was 12.3.
-  // Grass repeats about 181/12 by 175/12. Sides stay toon.
+  // Grass repeats about 181/30 by 175/30. Sides stay toon.
   slab(181,175,18,PALETTE.grass[0],GROUND_TOP_Y-.8,.8,8,grassMat);
   slab(176,170,16,PALETTE.soil,-8,7.5);
   slab(150,142,20,PALETTE.rock,-22,14);
