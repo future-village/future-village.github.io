@@ -346,7 +346,7 @@ function sitemap() {
     + '\n    <xhtml:link rel="alternate" hreflang="x-default" href="' + ORIGIN + '/en/"/>';
   const urls = pages.map(([href]) => '  <url>\n    <loc>' + href + '</loc>\n' + alt + '\n  </url>').join('\n');
   return '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n'
-    + urls + '\n  <url>\n    <loc>' + ORIGIN + '/site/</loc>\n  </url>\n</urlset>\n';
+    + urls + '\n  <url>\n    <loc>' + ORIGIN + '/site/</loc>\n  </url>\n  <url>\n    <loc>' + ORIGIN + '/ai-startup-sim/</loc>\n  </url>\n</urlset>\n';
 }
 function robots() {
   const bots = ['*', 'GPTBot', 'OAI-SearchBot', 'ChatGPT-User', 'Google-Extended', 'Googlebot', 'Bingbot', 'ClaudeBot', 'Claude-SearchBot', 'anthropic-ai', 'PerplexityBot', 'Applebot-Extended', 'Bytespider', 'CCBot', 'cohere-ai'];
