@@ -151,7 +151,8 @@ test('route C cards replace procedural trees and stay planted',async()=>{
     assert.equal(mesh.material.transparent,false);
     assert.equal(mesh.material.depthWrite,true);
     assert.equal(mesh.material.fog,true);
-    assert.equal(mesh.material.color.getHex(),v.HOUSE_WARM);
+    assert.equal(mesh.material.color.getHex(),kind==='bush_flowers'?v.BUSH_GREEN:v.HOUSE_WARM);
+    if(kind==='bush_flowers'){assert.ok(mesh.material.emissive.g>mesh.material.emissive.r);assert.ok(mesh.material.emissiveIntensity>0);}
     assert.equal(mesh.material.side,kind==='fence'?T.DoubleSide:T.FrontSide);
     assert.match(mesh.material.map.userData.src,new RegExp(kind+'\\.png$'));
     for(let i=0;i<mesh.count;i++){
@@ -159,21 +160,21 @@ test('route C cards replace procedural trees and stay planted',async()=>{
       assert.ok(Math.abs(v.houseMeshBottomY(pos.y,scale.y)-v.GROUND_TOP_Y)<1e-6,kind);
     }
   }
-  function fenceYaws(){
-    const out=[];
+  const rotations=[];
+  for(const position of [{x:100,y:40,z:-20},{x:-90,y:15,z:70}]){
+    props.update({position});const current=[];
     for(let i=0;i<props.meshes.fence.count;i++){
       props.meshes.fence.getMatrixAt(i,matrix);matrix.decompose(pos,quat,scale);
-      out.push(new T.Euler().setFromQuaternion(quat,'XYZ').y);
+      assert.ok(new T.Vector3(0,1,0).applyQuaternion(quat).distanceTo(new T.Vector3(0,1,0))<1e-6,'Y-only rotation');
+      assert.ok(Math.abs(pos.y-scale.y/2-v.GROUND_TOP_Y)<1e-6,'feet on ground');
+      const toward=new T.Vector3(position.x-pos.x,0,position.z-pos.z).normalize();
+      assert.ok(new T.Vector3(0,0,1).applyQuaternion(quat).dot(toward)>1-1e-6,'faces camera, never edge-on');
+      const expected=new T.Quaternion().setFromAxisAngle(new T.Vector3(0,1,0),Math.atan2(position.x-pos.x,position.z-pos.z));
+      assert.ok(1-Math.abs(quat.dot(expected))<1e-6);current.push(quat.clone());
     }
-    return out;
+    rotations.push(current);
   }
-  const before=fenceYaws();
-  for(const y of before)assert.ok(Math.abs(y)<1e-6);
-  props.update({position:{x:100,y:40,z:-20}});
-  props.update({position:{x:-90,y:15,z:70}});
-  const after=fenceYaws();
-  assert.equal(after.length,before.length);
-  for(let i=0;i<before.length;i++)assert.ok(Math.abs(after[i]-before[i])<1e-6);
+  for(let i=0;i<props.meshes.fence.count;i++)assert.ok(1-Math.abs(rotations[0][i].dot(rotations[1][i]))>1e-3,'yaw follows camera');
   const lamp=props.layout.lamp[0];
   props.update({position:{x:lamp.x+10,y:30,z:lamp.z}});
   props.meshes.lamp.getMatrixAt(0,matrix);matrix.decompose(pos,quat,scale);
@@ -195,9 +196,16 @@ test('grass cap and stone lanes use repeating painted tiles',async()=>{
   const sides=slabs.filter(o=>o!==cap);
   assert.ok(sides.length>=4);
   assert.ok(sides.every(o=>o.material.type==='MeshToonMaterial'));
-  let grassUv=0;const guv=cap.geometry.attributes.uv;
-  for(let i=0;i<guv.count;i++)grassUv=Math.max(grassUv,Math.abs(guv.getX(i)),Math.abs(guv.getY(i)));
-  assert.ok(grassUv>5&&grassUv<20);
+  assert.ok(g.GRASS_TILE_WORLD>=24);
+  const guv=cap.geometry.attributes.uv,gpos=cap.geometry.attributes.position;
+  assert.equal(cap.material.map.repeat.x,1);assert.equal(cap.material.map.repeat.y,1);
+  let measured=0;
+  for(let i=0;i<guv.count;i++){
+    assert.ok(Math.abs(guv.getX(i)-gpos.getX(i)/g.GRASS_TILE_WORLD)<1e-6);
+    assert.ok(Math.abs(guv.getY(i)-gpos.getZ(i)/g.GRASS_TILE_WORLD)<1e-6);
+    if(Math.abs(guv.getX(i))>.1){assert.ok(Math.abs(gpos.getX(i)/guv.getX(i))>=24-1e-5);measured++;}
+  }
+  assert.ok(measured>0);
   const north=scene.children.filter(o=>o.userData.lane==='north');
   let pathUv=0;
   for(const lane of north){const uv=lane.geometry.attributes.uv;for(let i=0;i<uv.count;i++)pathUv=Math.max(pathUv,Math.abs(uv.getX(i)),Math.abs(uv.getY(i)));}

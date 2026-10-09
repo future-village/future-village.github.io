@@ -31,6 +31,7 @@ export function cameraPose(targetX,targetY,targetZ,distance,pitch,yaw){
 
 // Cutout cards share the house material rules. alphaTest is 0.5 here; houses stay at 0.4.
 export const PROP_ALPHA_TEST=.5;
+export const BUSH_GREEN=0xbfff90;
 const PROP_FILE={tree_round:'tree_round.png',tree_pine:'tree_pine.png',bush_flowers:'bush_flowers.png',lamp:'lamp.png',bench:'bench.png',fence:'fence.png'};
 // Plane is 1x1 and centered. w/h are world units. Shadows are smaller than the house decal (18 x 12).
 const PROP_SPEC={
@@ -62,6 +63,8 @@ function propTexture(file){
 }
 function propMaterial(file,doubleSide){
   const material=new T.MeshLambertMaterial({map:propTexture(file),color:HOUSE_WARM,alphaTest:PROP_ALPHA_TEST,transparent:false,fog:true,premultipliedAlpha:false,side:doubleSide?T.DoubleSide:T.FrontSide});
+  // Lift foliage out of the warm brown scene lighting while retaining painted detail.
+  if(file==='bush_flowers.png'){material.color.setHex(BUSH_GREEN);material.emissive.setHex(0x285c12);material.emissiveIntensity=.7;}
   material.depthWrite=true;return material;
 }
 function contactShadowTexture(){
