@@ -239,7 +239,9 @@ function buildWelcome(root, out, result) {
       lang_label: pack.lang_label,
       lang_links: langLinks,
       kicker: pack.kicker,
-      headline_html: rich(pack.headline_parts, pack.headline_em, pack.wbr ? '<wbr>' : ''),
+      headline_html: ['zh-Hant', 'ja'].includes(locale.id)
+        ? pack.headline_parts.map((part, i) => '<span class="headline-phrase">' + (i === pack.headline_em ? '<em>' + esc(part) + '</em>' : esc(part)) + '</span>').join('<wbr>')
+        : rich(pack.headline_parts, pack.headline_em, pack.wbr ? '<wbr>' : ''),
       sub: pack.sub,
       cta_join: pack.cta_join,
       cta_browse: pack.cta_browse,
