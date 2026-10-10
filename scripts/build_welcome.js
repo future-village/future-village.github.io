@@ -104,7 +104,6 @@ function welcomeFacts(root, result) {
     svg: 'materials/' + item.ref + '.svg'
   }));
   const stage = result.n < 100 ? 'village' : result.n < 300 ? 'town' : 'city';
-  const next = result.n < 100 ? 100 : result.n < 300 ? 300 : null;
   return {
     n: result.n,
     stage,
@@ -112,17 +111,16 @@ function welcomeFacts(root, result) {
     activity,
     captain: captainOk,
     works,
-    progress: result.n >= 10 ? (next == null ? 1 : result.n / next) : null,
-    next
+    progress: null
   };
 }
-function slotsHtml(works, prefix, emptyLabel) {
+function slotsHtml(works, prefix, guideLabel) {
+  if (typeof guideLabel !== 'string' || guideLabel === '') throw new Error('Missing slot guide');
+  const filled = (Array.isArray(works) ? works : []).filter((work) => work && work.svg && work.title);
+  if (!filled.length) return '<li class="guide">' + esc(guideLabel) + '</li>';
   const cells = [];
-  for (let i = 0; i < 6; i++) {
-    const work = works[i];
-    cells.push(work
-      ? '<li><img src="' + esc(prefix + work.svg) + '" alt="' + esc(work.title) + '" loading="lazy"></li>'
-      : '<li class="empty">' + esc(emptyLabel) + '</li>');
+  for (const work of filled.slice(0, 6)) {
+    cells.push('<li><img src="' + esc(prefix + work.svg) + '" alt="' + esc(work.title) + '" loading="lazy"></li>');
   }
   return cells.join('');
 }
@@ -252,7 +250,7 @@ function buildWelcome(root, out, result) {
       s1_h2: rich(pack.s1_h2, pack.s1_em),
       s1_body: pack.s1_body,
       room_html: imgTag(found['room_cutaway_4x3.webp'] || '', prefix, pack.s1_alt, ''),
-      slots_html: slotsHtml(facts.works, prefix, pack.slot_empty),
+      slots_html: slotsHtml(facts.works, prefix, pack.slot_guide),
       room_href: captain ? prefix + 'site/#room=' + encodeURIComponent(captain.id) : prefix + 'site/',
       s1_cta: fill(pack.s1_cta),
       s2_capsule: pack.s2_capsule,
@@ -282,9 +280,6 @@ function buildWelcome(root, out, result) {
       captain_intro: captain ? (captain.intro || '') : '',
       captain_body: captain ? (captain.body || '') : '',
       captain_room: fill(pack.captain_room),
-      progress: facts.progress != null,
-      progress_p: facts.progress == null ? '' : facts.progress.toFixed(3),
-      progress_label: pack['progress_' + stage],
       s3_cta: pack.s3_cta,
       s4_capsule: pack.s4_capsule,
       s4_h2: rich(pack.s4_h2, pack.s4_em),

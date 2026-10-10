@@ -27,7 +27,34 @@ test('updates keep other own and swap slots; no empty slot rejects only new mate
  const result=intakeEvent(event(sample),base);assert.equal(result.ok,true);assert.ok(result.warnings.some(w=>w.includes('空格')));assert.deepEqual(read(base,'rooms/demo-resident/room.json').slots,slots);
 });
 test('render sources have badges and activity count without upgrade countdown or progress element',()=>{
- const root=path.join(__dirname,'..');for(const rel of ['site/index.html','site/app.js','site/world/village.js']){const text=fs.readFileSync(path.join(root,rel),'utf8');assert.doesNotMatch(text,/再\s*\d+\s*戶升格|還差\s*\d+\s*戶|<progress|next_level_at/);}
+ const root=path.join(__dirname,'..');
+ for(const rel of ['site/index.html','site/app.js','site/world/village.js']){
+  const text=fs.readFileSync(path.join(root,rel),'utf8');
+  assert.doesNotMatch(text,/再\s*\d+\s*戶升格|還差\s*\d+\s*戶|<progress|next_level_at/);
+ }
+ const welcomePage=fs.readFileSync(path.join(root,'welcome/page.html'),'utf8');
+ const welcomeJs=fs.readFileSync(path.join(root,'scripts/build_welcome.js'),'utf8');
+ assert.doesNotMatch(welcomePage,/class="bar"|<progress|\{\{#progress\}\}|progress_label|下一階是鎮/);
+ assert.doesNotMatch(welcomeJs,/class="bar"|progress_label|result\.n\s*>=\s*10|pack\.slot_empty/);
+ assert.match(welcomeJs,/progress:\s*null/);
+ assert.match(welcomeJs,/pack\.slot_guide/);
+ const app=fs.readFileSync(path.join(root,'site/app.js'),'utf8');
+ assert.doesNotMatch(app,/目前入住|el\('div','空格'/);
+ assert.match(app,/先放一件作品/);
+ assert.match(app,/這週有動的戶/);
+ const worldJs=fs.readFileSync(path.join(root,'scripts/build_world.js'),'utf8');
+ assert.match(worldJs,/next_level_at/);
+ assert.match(worldJs,/households:r\.n/);
+ for(const file of ['zh-Hant.json','en.json','ja.json','ko.json']){
+  const pack=JSON.parse(fs.readFileSync(path.join(root,'i18n',file),'utf8'));
+  assert.equal(pack.progress_village,undefined);
+  assert.equal(pack.progress_town,undefined);
+  assert.equal(pack.progress_city,undefined);
+  assert.equal(pack.slot_empty,undefined);
+  assert.equal(typeof pack.slot_guide,'string');
+  assert.ok(pack.slot_guide.length>0);
+  assert.ok(pack['s6_'+'village']);
+ }
 });
 test('roadside allocation is exactly households plus six',async()=>{const {roadsidePlots,model}=await import('../site/world/data.mjs');for(const n of [0,3,100]){assert.equal(roadsidePlots(n+6).length,n+6);assert.ok(roadsidePlots(n+6).every(p=>Math.abs(p.x)===22));const world=model({village:{},events:[],households:Array.from({length:n},(_,i)=>({id:'home-'+i}))});assert.equal(world.households.length,n);}});
 test('seven day active households deduplicate all actors and exclude demos, captain and examples',()=>{
