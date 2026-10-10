@@ -64,6 +64,31 @@ function imageIssue(buf,ext){
  }
  return 'missing JPEG end';
 }
+function imageSize(buf,ext){
+ if(ext==='.png'){
+  if(buf.length<24||buf.toString('ascii',12,16)!=='IHDR')return null;
+  return {width:buf.readUInt32BE(16),height:buf.readUInt32BE(20)};
+ }
+ if(ext==='.webp'){
+  let offset=12,fromVp8x=null,fromFrame=null;
+  while(offset+8<=buf.length){
+   const type=buf.toString('ascii',offset,offset+4),size=buf.readUInt32LE(offset+4),data=offset+8;
+   if(size>buf.length-data)return null;
+   if(type==='VP8X'&&size>=10){
+    fromVp8x={width:1+(buf[data+4]|(buf[data+5]<<8)|(buf[data+6]<<16)),height:1+(buf[data+7]|(buf[data+8]<<8)|(buf[data+9]<<16))};
+   }else if(type==='VP8 '&&size>=10&&(buf[data]&1)===0&&buf[data+3]===0x9d&&buf[data+4]===0x01&&buf[data+5]===0x2a){
+    fromFrame={width:buf.readUInt16LE(data+6)&0x3fff,height:buf.readUInt16LE(data+8)&0x3fff};
+   }else if(type==='VP8L'&&size>=5&&buf[data]===0x2f){
+    const bits=buf.readUInt32LE(data+1);
+    fromFrame={width:(bits&0x3fff)+1,height:((bits>>14)&0x3fff)+1};
+   }
+   offset+=8+size+(size%2);
+  }
+  return fromVp8x||fromFrame;
+ }
+ return null;
+}
+
 function scan(base,files){
  const hits=[],activeRules=[...rules,...localPolicy(base).rules];let control=0,imageBytes=0;
  for(const rel of files){
@@ -72,6 +97,8 @@ function scan(base,files){
    imageBytes+=buf.length;const issue=imageIssue(buf,ext);if(issue)hits.push(rel+': '+issue);continue;
   }
   if(/^site\/world\/assets\/models\/[^/]+\.glb$/.test(rel))continue;
+  // Household art stays out of the 3MB site-art total. Forward slashes, matching git ls-files.
+  if(/^rooms\/(?!(?:con|aux|nul|prn|com[1-9]|lpt[1-9])\/)[a-z0-9][a-z0-9-]{0,40}\/house\.(png|webp)$/.test(rel)){const issue=imageIssue(buf,ext);if(issue)hits.push(rel+': '+issue);continue;}
   if(buf.includes(0)){hits.push(rel+': null byte');continue;}
   const text=buf.toString('utf8');control+=(text.match(/未來村/g)||[]).length;
   text.split(/\r?\n/).forEach((line,i)=>{for(const rule of activeRules)if(rule.test(line))hits.push(rel+':'+(i+1)+' '+rule.source);});
@@ -101,4 +128,4 @@ function exportPublic(out,root=path.resolve(__dirname,'..')) {
  return {...result,files,out,ok:!result.hits.length&&result.control>=1};
 }
 if(require.main===module){try{if(!process.argv[2])throw new Error('Usage: node scripts/export_public.js <outdir>');if(!exportPublic(process.argv[2]).ok)process.exitCode=1;}catch(e){console.error(e.message);process.exitCode=1;}}
-module.exports={exportPublic,scan};
+module.exports={exportPublic,scan,imageIssue,imageSize};

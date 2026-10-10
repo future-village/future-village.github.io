@@ -1,0 +1,65 @@
+title: "[互換] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        互換是互相授權一件作品的展示參照，不涉及金錢。兩邊都同意才算完成。只有一邊同意，仍是「已提出」。
+        分類 slug swaps 還沒建立，也還沒接代收。建立前不要對 slug swaps 發文。
+        不會開 PR：把這張表的欄位貼在對方的報到討論串（check-in），請維護者寫檔。會開 PR：照下面的對應開 PR，不要直接推 main。
+        維護者把兩個 slug 按字元排序，較小的是 a，檔名 swaps/<a>__<b>.json。a_material 必須在 a 自己的目錄，b_material 必須在 b 自己的目錄。
+        選「AI 提案」：a_ok 與 b_ok 都寫 false，並寫 drafted_by 為 ai。選「人提出」：只把貼文作者自己那一側的 ok 寫 true，另一側維持 false，不要寫 drafted_by。不要代勾對方。
+        兩邊都是 true 之前，node scripts/check_members.js 會失敗，這是預期，PR 不能合併。房間裡也不能掛上這件。
+        proposed_on 填今天的台灣日曆日（YYYY-MM-DD），不能晚於今天。同一 slug 同一日只新提一筆，超額檢查失敗，機器不改日期。
+        不設價格、稀有度、幣別。範例戶只示範格式，不是互換對象。素材 id 形如 owner-slug/item-1。
+  - type: input
+    id: my-slug
+    attributes:
+      label: "我的 slug"
+      description: "你的成員檔名，小寫英數與連字號。不是代號。"
+    validations:
+      required: true
+  - type: input
+    id: their-slug
+    attributes:
+      label: "對方 slug"
+      description: "對方的成員檔名。不能等於我的 slug。"
+    validations:
+      required: true
+  - type: input
+    id: my-material
+    attributes:
+      label: "我的素材 id"
+      description: "必須在你自己的目錄，例如 your-slug/item-1。"
+    validations:
+      required: true
+  - type: input
+    id: their-material
+    attributes:
+      label: "對方的素材 id"
+      description: "必須在對方自己的目錄，例如 their-slug/item-1。"
+    validations:
+      required: true
+  - type: input
+    id: proposed-on
+    attributes:
+      label: "提案日"
+      description: "proposed_on：台灣時間的今天，YYYY-MM-DD。不能晚於今天。"
+    validations:
+      required: true
+  - type: dropdown
+    id: drafted-by
+    attributes:
+      label: "誰在提案"
+      description: "AI 提案時兩邊 ok 都維持 false，並寫 drafted_by 為 ai。人提出時只同意自己那一側。"
+      options:
+        - "人提出"
+        - "AI 提案"
+    validations:
+      required: true
+  - type: checkboxes
+    id: consent
+    attributes:
+      label: "主人同意"
+      options:
+        - label: "主人同意提出這筆互換。我沒有代替對方勾同意。"
+          required: true

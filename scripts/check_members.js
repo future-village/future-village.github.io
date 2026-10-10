@@ -14,28 +14,108 @@ const patterns = [
  ['金鑰', /(?:sk-(?:proj-)?[A-Za-z0-9_-]{8,}|gh[pousr]_[A-Za-z0-9_]{8,}|github_pat_[A-Za-z0-9_]{8,}|AKIA[A-Z0-9]{16}|AIza[A-Za-z0-9_-]{20,}|xox[abpors]-[A-Za-z0-9-]{8,}|-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----)/, true],
  ['LINE 連結', /(?:line\.me|lin\.ee|line\.naver\.jp)(?![\w-])/i, true]
 ];
+const {imageIssue,imageSize}=require('./export_public');
+const HOUSE_BYTES=400*1024;
+const HOUSE_EDGE=1024;
 const SLOTS = 6;
 const MISSING_MAX = 60;
 const LETTER_MAX = 200;
 const FOOTPRINT_MAX = 40;
 const LETTER_KEYS = ['from','to','date','body','ai_written'];
+const SWAP_KEYS = ['a','b','a_material','b_material','a_ok','b_ok','completed_on','drafted_by','proposed_on'];
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const EXTERNAL_LINK = /https?:\/\/|\bwww\./i;
 const SLUG = /^(?!(?:con|aux|nul|prn|com[1-9]|lpt[1-9])$)[a-z0-9][a-z0-9-]{0,40}$/;
 const FORBIDDEN_KEY = /price|pricing|cost|rarity|rare|currency|coin|價|稀有|幣/i;
 const SVG_TAGS = new Set(['svg','g','path','rect','circle','ellipse','line','polyline','polygon','text','tspan','title','desc']);
-function checkBook(book,file='book') {
+const EXECUTABLE=new RegExp('`'.repeat(3)+'|~~~|<script\\b|<%|<\\?php|javascript:|data:\\s*text\\/html|\\bon[a-z]+\\s*=','i');
+function validDate(value){
+ return DATE.test(value||'')&&Number.isFinite(Date.parse(value))&&new Date(value).toISOString().slice(0,10)===value;
+}
+// 可執行內容只認標記，不認散文裡的程式單字。
+// 命中就失敗：三個反引號、~~~、<script、<%、<?php、javascript:、data:text/html、on*=。
+// function、import、require 不算。標記寫在警告句裡也算。on*= 與素材 SVG 同一條，onion= 這種也會中，這條不放寬。
+function executableMark(text){return EXECUTABLE.test(text);}
+function checkBook(book,file='book',today=taipeiToday()) {
  const issues=[],add=(field,kind)=>issues.push({file,field,kind,fatal:true,advice:'請修正書卡'});
- for(const key of ['title','summary','source_url','added_by','made_by','license'])if(typeof book[key]!=='string'||!book[key].trim())add(key,'缺少必填');
+ if(!book||typeof book!=='object'||Array.isArray(book)){add('','JSON 必須是物件');return issues;}
+ for(const key of ['title','summary','source_url','added_by','made_by','license','version'])if(typeof book[key]!=='string'||!book[key].trim())add(key,'缺少必填');
  try{const u=new URL(book.source_url);if(u.protocol!=='https:'||!u.hostname||u.username||u.password)throw new Error();}catch{add('source_url','須為 https URL');}
  if(!Array.isArray(book.tags)||!book.tags.every(t=>typeof t==='string'&&t.trim()))add('tags','須為文字陣列');
  if(!['human','ai_marked'].includes(book.made_by))add('made_by','須為 human 或 ai_marked');
  if(book.do_not_execute!==true)add('do_not_execute','須為 true');
- const serialized=JSON.stringify(book);
+ if(!validDate(book.verified_on))add('verified_on','須為有效 YYYY-MM-DD');
+ else if(book.verified_on>today)add('verified_on','不能晚於今天（'+today+'）');
  scanText(book,'',add);
- if(/```|~~~|<script\b|<%|<\?php/i.test(serialized))add('content','不收可執行程式區塊');
+ if(executableMark(JSON.stringify(book)))add('content','不收可執行內容');
  return issues;
 }
+function checkLibrary(base,issues,today,books){
+ const rootDir=path.join(base,'library');
+ if(!fs.existsSync(rootDir))return;
+ const fail=(rel,kind)=>issues.push({file:rel,field:'',kind,fatal:true,advice:'書架只收 README.md 與 library/<id>.json'});
+ function walk(abs,rel){
+  let entries;try{entries=fs.readdirSync(abs,{withFileTypes:true});}catch{fail(rel,'書架目錄無法讀取');return;}
+  for(const ent of entries.sort((a,b)=>a.name.localeCompare(b.name))){
+   const childRel=rel+'/'+ent.name,childAbs=path.join(abs,ent.name);
+   let lst;try{lst=fs.lstatSync(childAbs);}catch{fail(childRel,'書架必須是普通檔');continue;}
+   if(lst.isSymbolicLink()){fail(childRel,'書架必須是普通檔');continue;}
+   if(lst.isDirectory()){fail(childRel,'書架只收純文字 JSON');walk(childAbs,childRel);continue;}
+   if(!lst.isFile()){fail(childRel,'書架必須是普通檔');continue;}
+   if(childRel==='library/README.md')continue;
+   const id=ent.name.endsWith('.json')?ent.name.slice(0,-5):'';
+   if(rel!=='library'||!SLUG.test(id)){fail(childRel,'書架只收純文字 JSON');continue;}
+   try{const book=readJson(childAbs);issues.push(...checkBook(book,childRel,today));books.set(id,book);}catch{issues.push({file:childRel,field:'',kind:'JSON 無法解析',fatal:true,advice:'請修正書卡'});}
+  }
+ }
+ walk(rootDir,'library');
+}
+function checkPublicProps(base,issues){
+ const dir=path.join(base,'site','world','assets','models');
+ if(!fs.existsSync(dir))return;
+ const fail=(field,kind)=>issues.push({file:'site/world/assets/models',field,kind,fatal:true,advice:'公共道具只收 CC0，並在 ART_CREDITS.md 同一行寫檔名、CC0、https 來源與 LICENSE*.txt'});
+ if(fs.lstatSync(dir).isSymbolicLink()){fail('','模型目錄必須是普通目錄');return;}
+ const found=[];
+ function walk(abs,rel,top){
+  let entries;try{entries=fs.readdirSync(abs,{withFileTypes:true});}catch{fail('','模型目錄無法讀取');return;}
+  for(const ent of entries){
+   const childAbs=path.join(abs,ent.name),childRel=rel+'/'+ent.name;
+   let lst;try{lst=fs.lstatSync(childAbs);}catch{continue;}
+   if(lst.isSymbolicLink()){if(ent.name.toLowerCase().endsWith('.glb'))fail(ent.name,'模型必須是普通檔');continue;}
+   if(lst.isDirectory()){walk(childAbs,childRel,false);continue;}
+   if(!lst.isFile()||!ent.name.toLowerCase().endsWith('.glb'))continue;
+   if(!ent.name.endsWith('.glb')){fail(ent.name,'模型副檔名只收小寫 .glb');continue;}
+   if(!top){fail(ent.name,'模型只放 models 目錄直屬');continue;}
+   found.push(ent.name);
+  }
+ }
+ walk(dir,'site/world/assets/models',true);
+ if(!found.length)return;
+ let text;try{text=fs.readFileSync(path.join(base,'ART_CREDITS.md'),'utf8');}catch{fail('ART_CREDITS.md','缺少根目錄 ART_CREDITS.md');return;}
+ const lines=text.split(/\r?\n/);
+ const cc0=/(^|[^A-Za-z0-9])CC0([^A-Za-z0-9]|$)/;
+ const nonCc0=/CC[\s-]*BY|\bMIT\b|\bApache\b|\bGPL\b|All Rights Reserved|©/i;
+ const hasFile=(line,name)=>new RegExp('(^|[^A-Za-z0-9._-])'+name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'([^A-Za-z0-9._-]|$)').test(line);
+ for(const name of found.sort()){
+  const hits=lines.filter(line=>hasFile(line,name));
+  if(hits.length!==1){fail(name,hits.length?'ART_CREDITS.md 只能有一行寫這個檔名':'ART_CREDITS.md 缺這個檔名');continue;}
+  const line=hits[0];
+  const mentions=line.match(/[A-Za-z0-9._-]+\.glb/g)||[];
+  if(mentions.length!==1||mentions[0]!==name){fail(name,'一行只寫一個道具檔名');continue;}
+  if(!cc0.test(line)){fail(name,'同一行要有 CC0');continue;}
+  if(nonCc0.test(line)){fail(name,'同一行出現非 CC0 授權');continue;}
+  if(!/https:\/\//.test(line)){fail(name,'同一行要有 https 來源');continue;}
+  const lics=line.match(/LICENSE[A-Za-z0-9._-]*\.txt/g)||[];
+  if(lics.length!==1){fail(name,'同一行要寫一個授權檔名 LICENSE*.txt');continue;}
+  const licPath=path.join(dir,lics[0]);
+  let st;try{st=fs.lstatSync(licPath);}catch{fail(name,'授權檔不在模型目錄');continue;}
+  if(st.isSymbolicLink()||!st.isFile()){fail(name,'授權檔必須是普通檔');continue;}
+  let body;try{body=fs.readFileSync(licPath,'utf8');}catch{fail(name,'授權檔無法讀取');continue;}
+  if(!cc0.test(body)||nonCc0.test(body)){fail(name,'授權檔不是 CC0');continue;}
+  scanText(line,name,(field,kind,fatal=true)=>issues.push({file:'ART_CREDITS.md',field,kind,fatal:Boolean(fatal),advice:fatal?'請移除或改用去敏描述':'已標示，仍請確認'}));
+ }
+}
+
 function checkMember(m, file = 'member') {
  const issues = [];
  const add = (field, kind, fatal = true, advice = '請移除或改用去敏描述') => issues.push({file, field, kind, fatal, advice});
@@ -122,6 +202,76 @@ function readJson(file) { return JSON.parse(fs.readFileSync(file,'utf8')); }
 function listJson(dir) { return fs.existsSync(dir) ? fs.readdirSync(dir).filter(f=>f.endsWith('.json')).sort() : []; }
 function listDirs(dir) { return fs.existsSync(dir) ? fs.readdirSync(dir,{withFileTypes:true}).filter(d=>d.isDirectory()).map(d=>d.name).sort() : []; }
 // 整個 repo：成員、房間、素材、互換，以及 N 的數法。
+function pngAnimated(buf){
+ let offset=8;
+ while(offset+12<=buf.length){
+  const size=buf.readUInt32BE(offset),type=buf.toString('ascii',offset+4,offset+8);
+  if(type==='acTL'||type==='fcTL'||type==='fdAT')return true;
+  if(size>buf.length-offset-12)return false;
+  offset+=size+12;
+  if(type==='IEND')break;
+ }
+ return false;
+}
+function checkHouses(base,issues,issue){
+ const houses=new Map();
+ const roomRoot=path.join(base,'rooms');
+ if(!fs.existsSync(roomRoot))return houses;
+ for(const slug of listDirs(roomRoot)){
+  const dir=path.join(roomRoot,slug),before=issues.length,add=issue('rooms/'+slug);
+  let names;
+  try{names=fs.readdirSync(dir,{withFileTypes:true});}
+  catch{add('house','房間目錄讀不到',true,'請改成普通資料夾');continue;}
+  const houseNames=names.filter(e=>/^house\./i.test(e.name));
+  if(!houseNames.length)continue;
+  if(!SLUG.test(slug))add('house','房子圖目錄須為住戶 slug');
+  if(houseNames.some(e=>!['house.png','house.webp','house.json'].includes(e.name)))add('house','房子圖只收 PNG 或 WebP');
+  const hasPng=houseNames.some(e=>e.name==='house.png'),hasWebp=houseNames.some(e=>e.name==='house.webp'),hasMeta=houseNames.some(e=>e.name==='house.json');
+  if(hasPng&&hasWebp)add('house','房子圖只留 PNG 或 WebP 一種');
+  if(!hasPng&&!hasWebp)add('house','缺少房子圖');
+  if(!hasMeta)add('house','缺少 house.json');
+  const imageName=hasPng&&!hasWebp?'house.png':hasWebp&&!hasPng?'house.webp':null;
+  const fileStat=name=>{
+   const full=path.join(dir,name);
+   let st;try{st=fs.lstatSync(full);}catch{add('house','房子圖必須是普通檔');return null;}
+   if(st.isSymbolicLink()||!st.isFile()){add('house','房子圖必須是普通檔');return null;}
+   return {full,st};
+  };
+  if(imageName){
+   const image=fileStat(imageName);
+   if(image&&image.st.size>HOUSE_BYTES)add('house','房子圖超過 400KB');
+   else if(image){
+    const buf=fs.readFileSync(image.full),ext=imageName.endsWith('.webp')?'.webp':'.png',img=imageIssue(buf,ext);
+    if(img)add('house','房子圖未過影像檢查：'+img);
+    else if(ext==='.png'&&pngAnimated(buf))add('house','房子圖必須是靜態圖');
+    else{
+     const size=imageSize(buf,ext);
+     if(!size||size.width<1||size.height<1||size.width>HOUSE_EDGE||size.height>HOUSE_EDGE)add('house','房子圖尺寸須為 1～1024');
+    }
+   }
+  }
+  if(hasMeta){
+   const metaFile=fileStat('house.json');
+   if(metaFile){
+    let meta;try{meta=readJson(metaFile.full);}catch{add('house.json','JSON 無法解析');meta=null;}
+    if(meta&&(typeof meta!=='object'||Array.isArray(meta))){add('house.json','JSON 必須是物件');meta=null;}
+    if(meta){
+     const madd=issue('rooms/'+slug+'/house.json');
+     for(const key of Object.keys(meta))if(!['source','rights_ok','desensitized_ok','made_by'].includes(key))madd(key,'house.json 只收 source、rights_ok、desensitized_ok、made_by');
+     if(!(typeof meta.source==='string'&&meta.source.trim()))madd('source','缺少出處');
+     if(typeof meta.source==='string'&&EXTERNAL_LINK.test(meta.source))madd('source','不收外部連結');
+     if(meta.rights_ok!==true)madd('rights_ok','缺少本人的權利勾');
+     if(meta.desensitized_ok!==true)madd('desensitized_ok','缺少去敏勾');
+     if(!['human','ai_marked','ai_assisted'].includes(meta.made_by))madd('made_by','須為 human、ai_marked 或 ai_assisted');
+     forbiddenKeys(meta,'',madd);scanText(meta,'',madd);
+    }
+   }
+  }
+  if(imageName&&SLUG.test(slug)&&!issues.slice(before).some(i=>i.fatal))houses.set(slug,'rooms/'+slug+'/'+imageName);
+ }
+ return houses;
+}
+
 function checkRepo(base = root, {today = taipeiToday()} = {}) {
  const issues = [];
  const issue = file => (field, kind, fatal = true, advice = '請修正') => issues.push({file, field, kind, fatal, advice});
@@ -172,7 +322,7 @@ function checkRepo(base = root, {today = taipeiToday()} = {}) {
    let s;
    try { s = readJson(path.join(base,'swaps',file)); } catch { add('','JSON 無法解析'); continue; }
    forbiddenKeys(s,'',add); scanText(s,'',add);
-   for (const k of Object.keys(s)) if (!['a','b','a_material','b_material','a_ok','b_ok','completed_on','drafted_by'].includes(k) && !FORBIDDEN_KEY.test(k)) add(k,'互換檔只收 a、b、a_material、b_material、a_ok、b_ok');
+   for (const k of Object.keys(s)) if (!SWAP_KEYS.includes(k) && !FORBIDDEN_KEY.test(k)) add(k,'互換檔只收 '+SWAP_KEYS.join('、'));
    if (s.completed_on !== undefined && (!DATE.test(s.completed_on) || !Number.isFinite(Date.parse(s.completed_on)) || new Date(s.completed_on).toISOString().slice(0,10)!==s.completed_on)) add('completed_on','須為有效 YYYY-MM-DD');
    if (s.drafted_by !== undefined && s.drafted_by !== 'ai') add('drafted_by','須為 ai');
    if (!(s.a < s.b) || file !== s.a+'__'+s.b+'.json') { add('a/b','檔名須為 <a>__<b>.json，a 依字母排在 b 前'); continue; }
@@ -183,6 +333,20 @@ function checkRepo(base = root, {today = taipeiToday()} = {}) {
    }
    if (s.a_ok !== true || s.b_ok !== true) add('a_ok/b_ok','只有一邊同意：這筆還是「已提出」，兩邊都勾了才合併',true,'等雙方本人在同一個 PR 只改自己那一側的 *_ok');
    swaps.set(s.a+'__'+s.b, s);
+ }
+  const proposalDay = new Map();
+ for (const key of [...swaps.keys()].sort()) {
+   const s = swaps.get(key), add = issue('swaps/'+key+'.json');
+   const open = s.a_ok !== true || s.b_ok !== true;
+   if (s.proposed_on !== undefined && !civilDay(s.proposed_on)) { add('proposed_on','須為有效 YYYY-MM-DD'); continue; }
+   if (open && s.proposed_on === undefined) { add('proposed_on','提案要標台灣日曆日 proposed_on'); continue; }
+   if (s.proposed_on !== undefined && s.proposed_on > today) { add('proposed_on','提案日不能晚於今天（'+today+'）。下一個台灣日曆日是 '+nextTaipeiDay(today)+'，請那天再寫新檔。機器不改日期。'); continue; }
+   if (s.proposed_on === undefined) continue;
+   for (const slug of [s.a, s.b]) {
+     const slot = slug+' '+s.proposed_on, prior = proposalDay.get(slot);
+     if (prior) add('proposed_on','同一戶同一天只能新提一筆互換（已有：'+prior+'）',true,'請改用下一個台灣日曆日 '+nextTaipeiDay(s.proposed_on)+'。機器不改日期、不代寄、不代勾。');
+     else proposalDay.set(slot, 'swaps/'+key+'.json');
+   }
  }
  const completeSwap = key => swaps.has(key) && !issues.some(i => i.fatal && i.file === 'swaps/'+key+'.json');
  // 房間：每人一間、固定 6 格
@@ -216,6 +380,7 @@ function checkRepo(base = root, {today = taipeiToday()} = {}) {
    rooms.set(slug,r);
  }
  for (const slug of members.keys()) if (!roomDirs.includes(slug)) issue('rooms/'+slug)('','每個成員要有一間 room.json');
+ const houses=checkHouses(base,issues,issue);
  // 每日一封信：一個人一個日曆日只寄一封；待送的隔一個日曆日以後才移到已送；沒有轉寄欄
  const letters = {pending: [], delivered: []}, sentOn = new Map();
  for (const box of ['pending','delivered']) for (const file of listJson(path.join(base,'letters',box))) {
@@ -236,7 +401,7 @@ function checkRepo(base = root, {today = taipeiToday()} = {}) {
      else if (l.date < today) add('date','已過寄出日，該跑 deliver_letters.js 送出',false,'node scripts/deliver_letters.js');
    } else if (!DATE.test(l.delivered_on || '') || !(l.delivered_on > l.date)) add('delivered_on','送達日須晚於寄出日（隔一個日曆日以後）');
    const key = l.from+' '+l.date;
-   if (sentOn.has(key)) add('date','同一個人同一天只能寄一封（另一封：'+sentOn.get(key)+'）');
+   if (sentOn.has(key)) add('date','同一個人同一天只能寄一封（另一封：'+sentOn.get(key)+'）', true, '超過的請改用下一個台灣日曆日 '+nextTaipeiDay(l.date)+' 另寫一封。機器不改日期、不代寄。');
    else sentOn.set(key, rel);
    letters[box].push(l);
  }
@@ -261,13 +426,14 @@ function checkRepo(base = root, {today = taipeiToday()} = {}) {
    });
  }
  const books=new Map();
- for(const file of listJson(path.join(base,'library'))){const add=issue('library/'+file);try{const book=readJson(path.join(base,'library',file));issues.push(...checkBook(book,'library/'+file));books.set(file.slice(0,-5),book);}catch{add('','JSON 無法解析');}}
+ checkLibrary(base,issues,today,books);
+ checkPublicProps(base,issues);
  for(const m of members.values())for(const id of m.recommends||[])if(!books.has(id))issue('members/'+m.id+'.json')('recommends','書 id 不存在');
  // 公共目錄：由腳本從已過檢查的素材彙總，人不要手改
  const catalog = buildCatalog(materials, members, goodMaterial);
  // N：主人同意、不是展示櫃、不是範例、不是草稿
  const n = [...members.values()].filter(m => m.owner_consent === true && m.showcase !== true && m.example !== true && m.demo !== true && m.draft !== true).length;
- return {files: memberFiles.length, issues, n, members, materials, swaps, rooms, letters, footprints, catalog};
+ return {files: memberFiles.length, issues, n, members, materials, swaps, rooms, letters, footprints, catalog, houses};
 }
 function buildCatalog(materials, members, ok) {
  return [...materials.keys()].filter(ok).sort().map(ref => {
@@ -275,6 +441,15 @@ function buildCatalog(materials, members, ok) {
    return {ref, title: m.title, owner: m.owner, handle: members.get(m.owner)?.handle || m.owner, source: m.source, made_by: m.made_by};
  });
 }
+function civilDay(value) {
+ return typeof value === 'string' && DATE.test(value) && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value;
+}
+function nextTaipeiDay(day) {
+ if (!civilDay(day)) return null;
+ const [y, m, d] = day.split('-').map(Number);
+ return new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10);
+}
+
 function taipeiToday(now = new Date()) {
  return new Intl.DateTimeFormat('en-CA', {timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit'}).format(now);
 }
@@ -306,4 +481,4 @@ if (require.main === module) {
    process.exitCode=failed?1:0;
  } catch(e) { console.error('檢查失敗：'+e.message);process.exitCode=1; }
 }
-module.exports={checkBook,checkMember,checkDirectory,checkRepo,materialSvgIssues,safeSvg,taipeiToday,SLOTS,MISSING_MAX,LETTER_MAX,SLUG};
+module.exports={checkBook,checkMember,checkDirectory,checkRepo,materialSvgIssues,safeSvg,taipeiToday,nextTaipeiDay,SLOTS,MISSING_MAX,LETTER_MAX,SLUG,HOUSE_BYTES,HOUSE_EDGE};

@@ -113,3 +113,79 @@ test('welcome pages replace the root redirect and leave /site/ bytes alone', {ti
     assert.ok(pack.faq.length >= 5 && pack.faq.length <= 7);
   }
 });
+
+test('welcome folds empty slots and omits the upgrade bar at 0 and 10 households', {timeout: 120000}, () => {
+  const {buildWelcome} = require('../scripts/build_welcome');
+  function resultFor(n, titles) {
+    const members = new Map();
+    for (let i = 0; i < n; i++) members.set('h' + i, {id: 'h' + i, owner_consent: true, handle: '戶' + i});
+    const catalog = (titles || []).map((title, i) => ({owner: 'h0', title, ref: 'h0/item-' + i}));
+    return {n, members, letters: {pending: []}, catalog};
+  }
+  function pages(n, titles) {
+    const out = path.join(mkTmp('welcome-cut-'), 'out');
+    fs.mkdirSync(out);
+    buildWelcome(root, out, resultFor(n, titles));
+    const read = (rel) => fs.readFileSync(path.join(out, rel), 'utf8');
+    return {'zh-Hant': read('index.html'), en: read('en/index.html'), ja: read('ja/index.html'), ko: read('ko/index.html')};
+  }
+  function slotBlock(html) {
+    const start = html.indexOf('<ol class="slots">');
+    const end = html.indexOf('</ol>', start);
+    assert.ok(start >= 0 && end > start);
+    return html.slice(start, end);
+  }
+  const banned = {
+    'zh-Hant': /class="bar"|下一階是鎮|下一階是城/,
+    en: /class="bar"|The next step is a town|The next step is a city|This is already a city\./,
+    ja: /class="bar"|次は町です。基準は100戸|次は市です。基準は300戸/,
+    ko: /class="bar"|다음은 읍이에요\. 기준은 100가구|다음은 도시예요\. 기준은 300가구/
+  };
+  for (const n of [0, 10]) {
+    const htmls = pages(n);
+    for (const [lang, html] of Object.entries(htmls)) assert.doesNotMatch(html, banned[lang], lang + ' ' + n);
+    const slots = slotBlock(htmls['zh-Hant']);
+    assert.equal(slots.match(/<li\b/g).length, 1);
+    assert.match(slots, /先放一件作品/);
+    assert.doesNotMatch(slots, /空格|class="empty"/);
+    assert.match(htmls['zh-Hant'], /先放<em>一件。<\/em>/);
+    assert.match(htmls['zh-Hant'], /現在還是村/);
+    assert.match(htmls.en, /Put one piece here/);
+    assert.match(htmls.ja, /まず一つ置く/);
+    assert.match(htmls.ko, /먼저 한 점 놓기/);
+  }
+  const empty = pages(0);
+  assert.match(empty['zh-Hant'], /門牌 1 號還空著/);
+  assert.doesNotMatch(empty['zh-Hant'], /現在 0 戶/);
+  assert.doesNotMatch(empty.en, /\b0 households\b/i);
+  const ten = pages(10);
+  assert.match(ten['zh-Hant'], /現在 10 戶。/);
+  assert.doesNotMatch(ten['zh-Hant'], /門牌 1 號還空著/);
+  const filled = slotBlock(pages(10, ['甲', '乙'])['zh-Hant']);
+  assert.equal(filled.match(/<li\b/g).length, 2);
+  assert.match(filled, /alt="甲"/);
+  assert.match(filled, /alt="乙"/);
+  assert.doesNotMatch(filled, /先放一件作品|class="empty"|class="guide"/);
+  const six = slotBlock(pages(10, ['1', '2', '3', '4', '5', '6', '7'])['zh-Hant']);
+  assert.equal(six.match(/<li\b/g).length, 6);
+  assert.doesNotMatch(six, /alt="7"/);
+  const stray = slotBlock(pages(0, ['不該出現'])['zh-Hant']);
+  assert.equal(stray.match(/<li\b/g).length, 1);
+  assert.doesNotMatch(stray, /不該出現/);
+});
+
+test('room page collapses empty slots to one guide and keeps six stored slots', () => {
+  const src = fs.readFileSync(path.join(root, 'site/app.js'), 'utf8');
+  const start = src.indexOf('function roomCells');
+  const end = src.indexOf('const {members');
+  assert.ok(start >= 0 && end > start);
+  const roomCells = new Function(src.slice(start, end) + '\nreturn roomCells;')();
+  assert.deepEqual(roomCells(Array.from({length: 6}, () => ({type: 'empty'}))), [{kind: 'guide', label: '先放一件作品'}]);
+  const mixed = [{type: 'own', material: 'a'}, {type: 'empty'}, {type: 'swap', material: 'b'}];
+  assert.deepEqual(roomCells(mixed).map((cell) => cell.slot.type), ['own', 'swap']);
+  assert.equal(JSON.stringify(roomCells(mixed)).includes('空格'), false);
+  assert.doesNotMatch(src, /目前入住/);
+  for (const id of ['answeraisolo', 'davidivowang', 'example-person', 'example-company', 'aiwff-main-brain']) {
+    assert.equal(JSON.parse(fs.readFileSync(path.join(root, 'rooms', id, 'room.json'), 'utf8')).slots.length, 6);
+  }
+});

@@ -1,0 +1,6 @@
+# Layer 3. Last matching line wins. Do not add a leading * rule.
+# /site/world/ covers site/world/village.js
+/.github/ @zaxardery8011-design
+/scripts/ @zaxardery8011-design
+/site/world/ @zaxardery8011-design
+/tests/ @zaxardery8011-design

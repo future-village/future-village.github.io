@@ -112,7 +112,8 @@ function intake(post, slug, base = root, {dryRun = false} = {}) {
  // 先在暫存複本裡寫好、整個 repo 檢查一次
  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'intake-'));
  try {
-   for (const d of ['members', 'rooms', 'materials', 'swaps']) if (fs.existsSync(path.join(base, d))) fs.cpSync(path.join(base, d), path.join(tmp, d), {recursive: true});
+   // 報到代收只寫 members、rooms、materials。信與互換的每日額度由同一個 checkRepo 判定；letters 一併拷進暫存，讓代收看到的樹和檢查器一致。代收不改日期、不寫信、不寫互換。
+   for (const d of ['members', 'rooms', 'materials', 'swaps', 'letters']) if (fs.existsSync(path.join(base, d))) fs.cpSync(path.join(base, d), path.join(tmp, d), {recursive: true});
    writeFiles(tmp, files);
    const mine = i => i.fatal && (i.file === 'members/' + slug + '.json' || i.file.startsWith('rooms/' + slug + '/') || i.file === 'rooms/' + slug || i.file.startsWith('materials/' + slug + '/'));
    const failed = checkRepo(tmp).issues.filter(mine);

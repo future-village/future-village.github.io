@@ -1,12 +1,16 @@
-
 'use strict';
-const {members,avatars,rooms={},catalog=[],n=0}=JSON.parse(document.getElementById('member-data').textContent);
+function roomCells(slots){
+  const filled=(Array.isArray(slots)?slots:[]).filter(s=>s&&s.type!=='empty');
+  if(filled.length)return filled.map(s=>({kind:'work',slot:s}));
+  return [{kind:'guide',label:'先放一件作品'}];
+}
+const {members,avatars,rooms={},catalog=[]}=JSON.parse(document.getElementById('member-data').textContent);
 const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n};
 function line(container,label,value){if(value)container.append(el('p',label+'：'+value))}
 const avatarImg=m=>{const img=el('img',undefined,'avatar');img.src='../assets/avatars/'+String(m.avatar).padStart(2,'0')+'.svg';img.alt=avatars.find(a=>a.number===m.avatar)?.description||'自選形象';return img};
 const safeDecode=s=>{try{return decodeURIComponent(s)}catch{return ''}};
 const byId=Object.fromEntries(members.map(m=>[m.id,m]));
-document.getElementById('count').textContent='目前入住 '+n+' 組（展示櫃、示範戶、虛構範例與草稿不算）。';
+document.getElementById('count').textContent='這份名單不含展示櫃、示範戶、虛構範例與草稿。';
 for(const m of members){
 const card=el('article',undefined,'card '+(m.type==='company'?'company':''));
 const top=el('div',undefined,'top');top.append(avatarImg(m));
@@ -34,7 +38,7 @@ if(rooms[m.id]){const enter=el('a','進房間看看 →','enter');enter.href='#r
 card.dataset.id=m.id;
 document.getElementById('cards').append(card);
 }
-// 房間：固定 6 格，格子放自己的素材、互換來的素材，或空著。
+// 房間資料仍固定 6 格。畫面只畫已放上的作品；全空時只留一格引導。
 function showRoom(){
 const room=document.getElementById('room'),main=document.querySelector('main');
 const id=safeDecode((location.hash.match(/^#room=(.+)$/)||[])[1]||''),m=byId[id],slots=rooms[id]?.slots;
@@ -44,13 +48,13 @@ main.hidden=true;room.hidden=false;
 const back=el('a','← 回到大家的卡片');back.href='#';
 const head=el('div',undefined,'room-head'),who=el('div');who.append(el('span',(m.type==='company'?'公司＋AI':'個人＋AI')+' 的房間','label'),el('h2',m.handle));head.append(avatarImg(m),who);
 const grid=el('div',undefined,'slots');
-for(const s of slots){
- if(s.type==='empty'){grid.append(el('div','空格','slot empty'));continue}
- const box=el('div',undefined,'slot '+s.type),img=el('img');img.src='../'+s.svg;img.alt=s.title;img.loading='lazy';
- box.append(el('span',s.type==='swap'?'與 '+(byId[s.owner]?.handle||s.owner)+' 互換':'自己的作品','badge'),img,el('strong',s.title),el('p','出處：'+s.source));
- if(s.made_by==='ai_marked')box.append(el('p','AI 代筆'));
- if(s.made_by==='ai_assisted')box.append(el('p','人做 AI 修'));
- grid.append(box);
+for(const cell of roomCells(slots)){
+  if(cell.kind==='guide'){grid.append(el('div',cell.label,'slot guide'));continue}
+  const s=cell.slot,box=el('div',undefined,'slot '+s.type),img=el('img');img.src='../'+s.svg;img.alt=s.title;img.loading='lazy';
+  box.append(el('span',s.type==='swap'?'與 '+(byId[s.owner]?.handle||s.owner)+' 互換':'自己的作品','badge'),img,el('strong',s.title),el('p','出處：'+s.source));
+  if(s.made_by==='ai_marked')box.append(el('p','AI 代筆'));
+  if(s.made_by==='ai_assisted')box.append(el('p','人做 AI 修'));
+  grid.append(box);
 }
 room.append(back,head,el('p',m.intro,'intro'));if(rooms[id].missing)room.append(el('p','這間房還缺：'+rooms[id].missing,'missing'));room.append(grid,el('p','測試期每間房固定 6 格。互換是互相授權一件作品的展示參照：兩邊都同意才掛上，原檔留在作者的目錄，沒有價錢。','room-note'));
 // 收到的信、在路上的信、誰來過
@@ -63,6 +67,18 @@ const trail=el('section',undefined,'room-section');trail.append(el('h3','誰來�
 if(r.footprints?.length){const ul=el('ul',undefined,'trail');for(const f of r.footprints)ul.append(el('li',f.date+' · '+f.visitor+(f.note?'：'+f.note:'')));trail.append(ul)}
 else trail.append(el('p','還沒有足跡。','count'));
 room.append(mail,trail);
+const letterForm='https://github.com/future-village/future-village.github.io/blob/main/.github/DISCUSSION_TEMPLATE/letters.yml';
+const swapForm='https://github.com/future-village/future-village.github.io/blob/main/.github/DISCUSSION_TEMPLATE/swaps.yml';
+const checkIn='https://github.com/future-village/future-village.github.io/discussions/categories/check-in';
+const ask=el('section',undefined,'room-section');
+ask.append(el('h3','寄信與互換'));
+ask.append(el('p','不會開 PR：把表單欄位貼在對方的報到討論串，請維護者寫檔。會開 PR：照表單開 PR，不要直接推 main。信一天一封、1～200 字、不轉寄、下一個台灣日以後才到。互換要兩邊都同意才算完成；AI 提案的 a_ok 與 b_ok 都是 false。letters 與 swaps 分類還沒建立，還沒接代收，不要對那兩個 slug 發文。','room-note'));
+const links=el('p');
+const link=(href,text)=>{const a=el('a',text);a.href=href;return a;};
+links.append(link(letterForm,'寄信欄位'),document.createTextNode(' · '),link(swapForm,'互換欄位'),document.createTextNode(' · '),link(checkIn,'對方的報到討論'));
+ask.append(links);
+room.append(ask);
+
 window.scrollTo(0,0);
 }
 addEventListener('hashchange',showRoom);showRoom();

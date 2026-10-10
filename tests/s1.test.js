@@ -2,7 +2,7 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 const {mkTmp}=require('./_tmp'),{checkBook,checkRepo}=require('../scripts/check_members'),{buildSite}=require('../scripts/build_site'),{scan}=require('../scripts/export_public');
 const root=path.resolve(__dirname,'..');
 test('book schema accepts a description and rejects unsafe or incomplete cards',()=>{
- const good={title:'Book',summary:'Description',source_url:'https://example.org/book',tags:['tools'],added_by:'example-person',made_by:'human',license:'CC BY 4.0',do_not_execute:true};
+ const good={title:'Book',summary:'Description',source_url:'https://example.org/book',tags:['tools'],added_by:'example-person',made_by:'human',license:'CC BY 4.0',do_not_execute:true,version:'1',verified_on:'2026-10-08'};
  assert.deepEqual(checkBook(good),[]);
  for(const key of Object.keys(good)){const bad={...good};delete bad[key];assert.ok(checkBook(bad).length,key);}
  for(const bad of [{source_url:'http://example.org'},{summary:'```js\nrun()\n```'},{summary:'C'+':'+String.fromCharCode(92)+'private'},{do_not_execute:false}])assert.ok(checkBook({...good,...bad}).length);

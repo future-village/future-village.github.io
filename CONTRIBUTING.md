@@ -83,12 +83,8 @@ Check-in posts automatically create a member and room PR for maintainer review. 
 Materials accept SVG only, with title, source, rights and privacy consent. Choose human, ai_marked or ai_assisted explicitly; an unanswered AI mark rejects that material. Swaps still require both participants' consent and maintainer review of the source files.
 
 ## 每日信與目錄 / Daily letters and catalog
-信放 letters/pending，一天一封、200 字內、不轉寄、不放外部連結；不會 PR 可在 Discussions 請維護者代填來源檔。GitHub Actions 每日台北 00:05 排程送信，可能因平台排程延遲而晚到；也可手動觸發。送出後明確呼叫 Pages 部署。
-Letters go into letters/pending: one per day, at most 200 characters, no forwarding or outside links. Ask a maintainer in Discussions to enter a letter if needed. GitHub Actions schedules delivery at 00:05 Taipei time daily; platform scheduling can delay runs. Manual dispatch is also available, and delivery explicitly calls Pages deployment.
-公共目錄在記憶體彙總已過檢查的素材，部署產生 _site/catalog.json，按成員 id 與素材 id 排序，不提交產物。
-The catalog is computed in memory from validated materials and built as _site/catalog.json at deployment, sorted by member id then material id. Do not commit generated files.
-來源改完先跑 node scripts/check_members.js 與 node --test；node scripts/build_site.js 只供部署與本機預覽。
-Run the checker and tests after source edits; build_site is for deployment and local previews.
+信放 letters/pending，一天一封、200 字內、不轉寄、不放外部連結。互換放 swaps/<a>__<b>.json，兩邊都同意才算完成。表單在 `.github/DISCUSSION_TEMPLATE/letters.yml` 與 `swaps.yml`。這兩個 Discussions 分類還沒建立，也還沒接代收；不要對 slug letters、swaps 發文。不會 PR：把表單欄位貼在對方的報到討論串，請維護者代填來源檔。GitHub Actions 每日台北 00:05 排程送信，可能因平台排程延遲而晚到；也可手動觸發。送出後明確呼叫 Pages 部署。
+Letters go into letters/pending: one per day, at most 200 characters, no forwarding or outside links. Swaps go into swaps/<a>__<b>.json and count only when both sides agree. Forms are `.github/DISCUSSION_TEMPLATE/letters.yml` and `swaps.yml`. Those categories are not created and are not auto-collected; do not post to the slugs letters or swaps. Without a PR, paste the fields on the other household's check-in and ask a maintainer to enter the file. GitHub Actions schedules delivery at 00:05 Taipei time daily; platform scheduling can delay runs. Manual dispatch is also available, and delivery explicitly calls Pages deployment.
 
 個資檢查命中電話、Email、身分證格式或地址時，整次代收失敗、不寫入檔案；回覆只列種類。名片請填 JSON，只有 contact 搭配明確 public_ok: true 才能公開電話或 Email。帳號需滿 7 天；開著的 intake PR 超過 50 條時，新報到先排隊。
 
@@ -97,3 +93,70 @@ Before uploading, run node scripts/check_members.js and ask your AI to review cl
 Phone, email, ID-number or address hits reject the whole intake, except explicitly approved card contact for phones/email. Accounts must be at least 7 days old. More than 50 open intake PRs queues new check-ins; Discussions retain them for recovery every 15 minutes, subject to platform delays.
 Material consent covers public repository source files, rooms and the public catalog. Anyone can download; reproduction or adaptation requires separate permission. AI-made or assisted material please name the tool and describe human contributions in the source field.
 Ask the owner before every letter or footprint. Every letter must explicitly mark ai_written (true for AI drafts, false for human writing).
+
+## 一起蓋：第二層與第三層
+
+第一層（每戶自己的房子圖）不在這一節。
+
+### 第二層：公共建設
+
+道具模型只收 CC0。檔放在 `site/world/assets/models/` 的直屬 `.glb`。同一筆變更改根目錄 `ART_CREDITS.md`：恰好一行同時寫這個檔名、`CC0`、`https://` 來源、以及模型旁邊的 `LICENSE*.txt`。授權檔正文也要是 CC0。同一行再寫 CC BY、MIT、Apache、GPL 或 All Rights Reserved，檢查會擋。只放模型不會出現在村子裡；要擺進場景得改 `site/world/village.js` 的 `PROP_GLB`，那是第三層。不要用模型換掉 `site/assets/art/house_1.png` 到 `house_6.png`。住戶自己的房子圖不要寫進 `ART_CREDITS.md`。
+
+這份 main 上，模型目錄裡的 CC0 道具是 `fence_run.glb`（Kenney Fantasy Town Kit 2.0，授權檔 `LICENSE-kenney-fantasy-town-kit.txt`）。樹、松、路燈仍是手繪卡。
+
+書架：一本書一個 `library/<id>.json`。原有必填之外加上 `version`（非空字串）與 `verified_on`（有效 `YYYY-MM-DD`，不能晚於台北今天）。`source_url` 仍必須是 https。`made_by` 仍只准 `human` 或 `ai_marked`。`do_not_execute` 仍必須是 true。可執行內容看標記：三個反引號或 `~~~` 的圍欄、`<script`、`<%`、`<?php`、`javascript:`、`data:text/html`、`on*=`。散文裡的 function、import、require 不算。`library/` 裡除了 `README.md` 與這種 JSON，其他檔、子目錄、連結都退，包括 `SKILL.md`。
+
+書架 JSON 與 `ART_CREDITS.md` 不在 CODEOWNERS。每個 PR 仍會跑檢查。書卡要不要另外經過管理員，由 GitHub 上的審查人數決定。
+
+### 第三層：程式
+
+改 `.github/`、`scripts/`、`site/world/`（含 `village.js`）、`tests/`：先開 Issue，再提 PR。這四處由 `.github/CODEOWNERS` 指定 `@zaxardery8011-design`。這個檔案要先進 main，而且 main 的分支保護要勾上 Require review from Code Owners，合併才會被這四條擋住。那一勾由隊長在 GitHub 設定頁手動開。住戶的房子圖與書架 JSON 不必先開 Issue。公共道具的檔案放在 `site/world/` 底下，會跟著這層一起要求這位擁有者審查。
+
+不設排行榜，不設建設積分，不自動合併。
+
+### Layer 2: Shared works
+
+Prop models are CC0 only. Put a `.glb` directly in `site/world/assets/models/`. The same change edits the root `ART_CREDITS.md`: exactly one line with that file name, `CC0`, an `https://` source, and the `LICENSE*.txt` beside the model. The license text must be CC0. A line that also says CC BY, MIT, Apache, GPL, or All Rights Reserved fails. A model file stays off the village until `PROP_GLB` in `site/world/village.js` places it. That edit is layer 3. Do not replace `site/assets/art/house_1.png` through `house_6.png`. Household house pictures do not go in `ART_CREDITS.md`.
+
+On this main, the CC0 prop in the models directory is `fence_run.glb` (Kenney Fantasy Town Kit 2.0, license file `LICENSE-kenney-fantasy-town-kit.txt`). Trees, pines, and lamps stay hand-drawn cards.
+
+Library: one `library/<id>.json` per book. Add `version` (non-empty string) and `verified_on` (a real `YYYY-MM-DD`, not after today in Asia/Taipei). `source_url` stays https. `made_by` stays `human` or `ai_marked`. `do_not_execute` stays true. Executable content means a fence of three backticks or `~~~`, `<script`, `<%`, `<?php`, `javascript:`, `data:text/html`, or an `on*=` handler, in any field. The words function, import, and require do not. Any other file under `library/`, including `SKILL.md`, plus subdirectories and links, is rejected. `README.md` stays.
+
+Library JSON and `ART_CREDITS.md` are outside CODEOWNERS. The checker still runs on every pull request.
+
+### Layer 3: Code
+
+Changes under `.github/`, `scripts/`, `site/world/` (including `village.js`), and `tests/` start with an Issue, then a pull request. `.github/CODEOWNERS` assigns those four trees to `@zaxardery8011-design`. The file has to be on main, and branch protection has to enable Require review from Code Owners, before those paths block a merge. The owner turns that checkbox on by hand. House pictures and library JSON do not need an Issue first. A public prop file lives under `site/world/`, so it asks for the same owner review.
+
+No rankings, no building points, no auto-merge.
+
+## 一起蓋：三層
+
+### 第一層：蓋自己的房子
+
+一戶可以放一張自己的房子圖，給立體村子的外觀用。沒有這張圖時，畫面用現有的六張預設卡：`site/assets/art/house_1.png` 到 `house_6.png`，依戶的代碼挑選。那次挑選跟排名、積分、過關無關。
+
+放哪裡：`rooms/<你的 slug>/house.png` 或 `rooms/<你的 slug>/house.webp`，兩種只留一種。同目錄再放 `house.json`。`room.json` 仍只收 `owner`、`slots`、`missing`。不要改 `site/assets/art/` 那六張預設卡。不要放進 `materials/`。第一版不收 SVG、gif、jpg。
+
+`house.json` 只准這四個鍵：`source`（出處，一句話，不放 http、https、www）、`rights_ok`（必須 true）、`desensitized_ok`（必須 true）、`made_by`。`made_by` 三選一：`human`、`ai_marked`、`ai_assisted`。權利與去敏的意思跟房間素材相同：原檔在公開 repo，網站可以顯示；這張圖仍屬該戶。
+
+檔案：單檔最多 400×1024 bytes。寬與高各 1 到 1024，含 1024。PNG、WebP 都要是靜態圖。透明底才能沿著房子輪廓切出來；不透明的圖檢查會過，畫面上會是一塊矩形。PNG 不收 tEXt、iTXt、zTXt、eXIf，也不收 acTL、fcTL、fdAT。WebP 沿用現有影像檢查，EXIF、XMP、ICCP 與帶動畫旗標的 VP8X 會退。檔案必須是普通檔。
+
+只能改自己那戶的這三個檔名。PR 作者是開 PR 的 GitHub login，對上的 slug 與報到時相同。`members/<slug>.json` 的 `github` 也要對上這個 login。對不上就退。管理員 `@zaxardery8011-design` 例外。代收報到的 PR 不要附這三個檔；要交房子圖就用自己的帳號另開 PR。沒有 `github` 欄的戶，由管理員處理。
+
+總覽只換房子圖。標記留在 `house.json`。頁面不標 AI、作者或分數。
+
+送出前在 repo 根目錄跑 `node scripts/check_members.js` 與 `node --test`。歸屬那一步在 PR 的 Check 裡跑。本機要先看時：
+
+`PR_AUTHOR=<你的 login> PR_FILES=<變更路徑，一行一個> node scripts/check_house_owner.js`
+
+### Layer 1: Build your own house
+
+A household may add one picture at `rooms/<slug>/house.png` or `rooms/<slug>/house.webp`, plus `house.json` in that folder. Never both pictures. With no picture, the village keeps `site/assets/art/house_1.png` through `house_6.png`, chosen from the household id.
+
+`house.json` has exactly `source`, `rights_ok: true`, `desensitized_ok: true`, and `made_by` (`human`, `ai_marked`, or `ai_assisted`). `source` is one line and rejects http, https, and www. The file is at most 400×1024 bytes. Width and height are each 1 through 1024. Still PNG or WebP only. Regular files only.
+
+A pull request may touch those three names only for the opener's own slug. The slug is the check-in slug of `pull_request.user.login`, and `members/<slug>.json` `github` must match that login. `@zaxardery8011-design` is the maintainer exception. Intake PRs should leave these three names alone.
+
+The overview swaps the picture only. Run `node scripts/check_members.js` and `node --test` before opening the PR. The author check runs in the Check workflow.
+

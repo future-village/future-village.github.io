@@ -4,13 +4,21 @@ const {checkRepo,taipeiToday}=require('./check_members');
 function village(n){const level=n<100?'village':n<300?'town':'city',next=n<100?100:n<300?300:null;return {name_stem:'未來',level,level_name:{village:'村',town:'鎮',city:'城'}[level],households:n,next_level_at:next,progress:next===null?1:Math.min(1,n/next)};}
 // Stable hash coordinates; fail closed on collisions rather than moving existing plots.
 function plot(id){const digest=crypto.createHash('sha256').update(id).digest();return {x:BigInt('0x'+digest.subarray(0,16).toString('hex')).toString(),z:BigInt('0x'+digest.subarray(16).toString('hex')).toString()};}
+function householdMachine(member, room, catalog) {
+ return {
+  offers: catalog.filter(c => c.owner === member.id).map(c => c.ref).sort(),
+  missing: room?.missing || '',
+  owner_seen: member.owner_consent === true
+ };
+}
+
 function firstCommit(root,rel){const r=cp.spawnSync('git',['-C',root,'log','--follow','--diff-filter=A','--format=%aI','--',rel],{encoding:'utf8'});if(r.status!==0)throw new Error(r.stderr);return r.stdout.trim().split(/\r?\n/).filter(Boolean).at(-1)||null;}
 function weeklyActive(events,members,now){const eligible=new Set(members.filter(m=>m.owner_consent===true&&!m.draft&&!m.showcase&&!m.example&&!m.demo).map(m=>m.id));return new Set(events.filter(e=>Date.parse(e.ts)<=now.getTime()&&Date.parse(e.ts)>=now.getTime()-7*86400000).flatMap(e=>e.actors).filter(id=>eligible.has(id))).size;}
 function buildWorld(root=path.resolve(__dirname,'..'),out=path.join(root,'_site','village_world.json'),{now=new Date()}={}){
  const r=checkRepo(root),visible=[...r.members.values()].filter(m=>m.owner_consent===true&&m.draft!==true).sort((a,b)=>a.id.localeCompare(b.id)),ids=new Set(visible.map(m=>m.id)),events=[],today=taipeiToday(now),handle=id=>r.members.get(id).handle;
  const emit=(ts,type,actors,text,file)=>{if(ts&&actors.every(id=>ids.has(id)))events.push({id:crypto.createHash('sha256').update(JSON.stringify([type,file,ts])).digest('hex'),ts,type,actors,from:actors[0]||null,to:actors[1]||actors[0]||null,day:taipeiToday(new Date(ts)),text});};
  const occupied=new Set();
- const households=visible.map(m=>{const moved=firstCommit(root,'members/'+m.id+'.json'),room=r.rooms.get(m.id),position=plot(m.id),key=position.x+','+position.z;if(occupied.has(key))throw new Error('Plot hash collision');occupied.add(key);emit(moved,'move_in',[m.id],handle(m.id)+' 搬進未來村','members/'+m.id+'.json');return {id:m.id,handle:m.handle,type:m.type,avatar:m.avatar,slots_filled:(room?.slots||[]).filter(s=>s.type!=='empty'&&(!s.material||ids.has(s.material.split('/')[0]))).length,missing:room?.missing||'',moved_in_at:moved,showcase:m.showcase===true||m.example===true||m.demo===true,plot:position};});
+ const households=visible.map(m=>{const moved=firstCommit(root,'members/'+m.id+'.json'),room=r.rooms.get(m.id),position=plot(m.id),key=position.x+','+position.z;if(occupied.has(key))throw new Error('Plot hash collision');occupied.add(key);emit(moved,'move_in',[m.id],handle(m.id)+' 搬進未來村','members/'+m.id+'.json');const machine=householdMachine(m,room,r.catalog);const row={id:m.id,handle:m.handle,type:m.type,avatar:m.avatar,slots_filled:(room?.slots||[]).filter(s=>s.type!=='empty'&&(!s.material||ids.has(s.material.split('/')[0]))).length,offers:machine.offers,missing:machine.missing,owner_seen:machine.owner_seen,moved_in_at:moved,showcase:m.showcase===true||m.example===true||m.demo===true,plot:position};const art=r.houses.get(m.id);if(typeof art==='string'&&/^rooms\/(?!(?:con|aux|nul|prn|com[1-9]|lpt[1-9])\/)[a-z0-9][a-z0-9-]{0,40}\/house\.(png|webp)$/.test(art))row.house_art=art;return row;});
  for(const [key,s] of r.swaps)if(s.a_ok===true&&s.b_ok===true)emit(s.completed_on?s.completed_on+'T00:00:00+08:00':firstCommit(root,'swaps/'+key+'.json'),'swap',[s.a,s.b],ids.has(s.a)&&ids.has(s.b)?handle(s.a)+' 跟 '+handle(s.b)+' 換了素材':'','swaps/'+key+'.json');
  for(const l of [...r.letters.pending,...r.letters.delivered]){const actors=[l.from,l.to];if(!actors.every(id=>ids.has(id)))continue;emit(l.date+'T00:00:00+08:00','letter_sent',actors,handle(l.from)+' 寄信給 '+handle(l.to),'letters/'+l.from+'__'+l.to+'__'+l.date+'.json');if(l.delivered_on)emit(l.delivered_on+'T00:00:00+08:00','letter_delivered',actors,handle(l.to)+' 收到 '+handle(l.from)+' 的信','letters/'+l.from+'__'+l.to+'__'+l.date+'.json');}
  // Blame attributes each current footprint line to the commit that introduced it.
@@ -35,4 +43,4 @@ function buildWorld(root=path.resolve(__dirname,'..'),out=path.join(root,'_site'
  if(out!==null){fs.mkdirSync(path.dirname(out),{recursive:true});fs.writeFileSync(out,JSON.stringify(world,null,2)+'\n');}return world;
 }
 if(require.main===module)buildWorld();
-module.exports={buildWorld,village,plot,firstCommit,weeklyActive};
+module.exports={buildWorld,village,plot,firstCommit,weeklyActive,householdMachine};
