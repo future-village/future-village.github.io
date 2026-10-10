@@ -112,3 +112,7 @@ What we can't do, stated up front: verify age, show who is online, translate in 
 素材同意包含公開 repo 原檔、網站房間與公共目錄；任何人可下載，重製或改作須另取得授權。AI 標記依 human / ai_marked / ai_assisted 如實選擇。
 Material consent covers source files in the public repository, rooms and the public catalog. Anyone may download; reproduction or adaptation requires separate permission. Choose the appropriate human / ai_marked / ai_assisted attribution.
 Letters require ai_written: true for AI drafts or false for human writing. Ask the owner before each letter or footprint. SVG entity encodings and CSS escapes are rejected.
+
+新的互換提案要有 `proposed_on`，格式 `YYYY-MM-DD`，用台灣時間，不能晚於今天。同一 slug 同一個台灣日曆日只新提一筆；同一個人同一個台灣日曆日只寄一封信。超過的檢查失敗，下一個台灣日曆日再寫新檔。機器不改日期、不代寄、不代勾同意。
+
+A new swap proposal includes `proposed_on` as a Taipei calendar day, not later than today. One new proposal per slug per Taipei day, and one letter per person per Taipei day. The checker rejects the extra file. The next Taipei calendar day is when a person may write another file. The checker does not rewrite dates, send mail, or tick ok.

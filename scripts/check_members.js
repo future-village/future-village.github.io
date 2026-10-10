@@ -19,6 +19,7 @@ const MISSING_MAX = 60;
 const LETTER_MAX = 200;
 const FOOTPRINT_MAX = 40;
 const LETTER_KEYS = ['from','to','date','body','ai_written'];
+const SWAP_KEYS = ['a','b','a_material','b_material','a_ok','b_ok','completed_on','drafted_by','proposed_on'];
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const EXTERNAL_LINK = /https?:\/\/|\bwww\./i;
 const SLUG = /^(?!(?:con|aux|nul|prn|com[1-9]|lpt[1-9])$)[a-z0-9][a-z0-9-]{0,40}$/;
@@ -172,7 +173,7 @@ function checkRepo(base = root, {today = taipeiToday()} = {}) {
    let s;
    try { s = readJson(path.join(base,'swaps',file)); } catch { add('','JSON 無法解析'); continue; }
    forbiddenKeys(s,'',add); scanText(s,'',add);
-   for (const k of Object.keys(s)) if (!['a','b','a_material','b_material','a_ok','b_ok','completed_on','drafted_by'].includes(k) && !FORBIDDEN_KEY.test(k)) add(k,'互換檔只收 a、b、a_material、b_material、a_ok、b_ok');
+   for (const k of Object.keys(s)) if (!SWAP_KEYS.includes(k) && !FORBIDDEN_KEY.test(k)) add(k,'互換檔只收 '+SWAP_KEYS.join('、'));
    if (s.completed_on !== undefined && (!DATE.test(s.completed_on) || !Number.isFinite(Date.parse(s.completed_on)) || new Date(s.completed_on).toISOString().slice(0,10)!==s.completed_on)) add('completed_on','須為有效 YYYY-MM-DD');
    if (s.drafted_by !== undefined && s.drafted_by !== 'ai') add('drafted_by','須為 ai');
    if (!(s.a < s.b) || file !== s.a+'__'+s.b+'.json') { add('a/b','檔名須為 <a>__<b>.json，a 依字母排在 b 前'); continue; }
@@ -183,6 +184,20 @@ function checkRepo(base = root, {today = taipeiToday()} = {}) {
    }
    if (s.a_ok !== true || s.b_ok !== true) add('a_ok/b_ok','只有一邊同意：這筆還是「已提出」，兩邊都勾了才合併',true,'等雙方本人在同一個 PR 只改自己那一側的 *_ok');
    swaps.set(s.a+'__'+s.b, s);
+ }
+  const proposalDay = new Map();
+ for (const key of [...swaps.keys()].sort()) {
+   const s = swaps.get(key), add = issue('swaps/'+key+'.json');
+   const open = s.a_ok !== true || s.b_ok !== true;
+   if (s.proposed_on !== undefined && !civilDay(s.proposed_on)) { add('proposed_on','須為有效 YYYY-MM-DD'); continue; }
+   if (open && s.proposed_on === undefined) { add('proposed_on','提案要標台灣日曆日 proposed_on'); continue; }
+   if (s.proposed_on !== undefined && s.proposed_on > today) { add('proposed_on','提案日不能晚於今天（'+today+'）。下一個台灣日曆日是 '+nextTaipeiDay(today)+'，請那天再寫新檔。機器不改日期。'); continue; }
+   if (s.proposed_on === undefined) continue;
+   for (const slug of [s.a, s.b]) {
+     const slot = slug+' '+s.proposed_on, prior = proposalDay.get(slot);
+     if (prior) add('proposed_on','同一戶同一天只能新提一筆互換（已有：'+prior+'）',true,'請改用下一個台灣日曆日 '+nextTaipeiDay(s.proposed_on)+'。機器不改日期、不代寄、不代勾。');
+     else proposalDay.set(slot, 'swaps/'+key+'.json');
+   }
  }
  const completeSwap = key => swaps.has(key) && !issues.some(i => i.fatal && i.file === 'swaps/'+key+'.json');
  // 房間：每人一間、固定 6 格
@@ -236,7 +251,7 @@ function checkRepo(base = root, {today = taipeiToday()} = {}) {
      else if (l.date < today) add('date','已過寄出日，該跑 deliver_letters.js 送出',false,'node scripts/deliver_letters.js');
    } else if (!DATE.test(l.delivered_on || '') || !(l.delivered_on > l.date)) add('delivered_on','送達日須晚於寄出日（隔一個日曆日以後）');
    const key = l.from+' '+l.date;
-   if (sentOn.has(key)) add('date','同一個人同一天只能寄一封（另一封：'+sentOn.get(key)+'）');
+   if (sentOn.has(key)) add('date','同一個人同一天只能寄一封（另一封：'+sentOn.get(key)+'）', true, '超過的請改用下一個台灣日曆日 '+nextTaipeiDay(l.date)+' 另寫一封。機器不改日期、不代寄。');
    else sentOn.set(key, rel);
    letters[box].push(l);
  }
@@ -275,6 +290,15 @@ function buildCatalog(materials, members, ok) {
    return {ref, title: m.title, owner: m.owner, handle: members.get(m.owner)?.handle || m.owner, source: m.source, made_by: m.made_by};
  });
 }
+function civilDay(value) {
+ return typeof value === 'string' && DATE.test(value) && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value;
+}
+function nextTaipeiDay(day) {
+ if (!civilDay(day)) return null;
+ const [y, m, d] = day.split('-').map(Number);
+ return new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10);
+}
+
 function taipeiToday(now = new Date()) {
  return new Intl.DateTimeFormat('en-CA', {timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit'}).format(now);
 }
@@ -306,4 +330,4 @@ if (require.main === module) {
    process.exitCode=failed?1:0;
  } catch(e) { console.error('檢查失敗：'+e.message);process.exitCode=1; }
 }
-module.exports={checkBook,checkMember,checkDirectory,checkRepo,materialSvgIssues,safeSvg,taipeiToday,SLOTS,MISSING_MAX,LETTER_MAX,SLUG};
+module.exports={checkBook,checkMember,checkDirectory,checkRepo,materialSvgIssues,safeSvg,taipeiToday,nextTaipeiDay,SLOTS,MISSING_MAX,LETTER_MAX,SLUG};

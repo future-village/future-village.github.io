@@ -162,7 +162,8 @@ _No response_
   "b_material": "little-river/item-1",
   "a_ok": false,
   "b_ok": false,
-  "drafted_by": "ai"
+  "drafted_by": "ai",
+  "proposed_on": "2026-10-08"
 }
 ```
 
@@ -223,3 +224,7 @@ README：https://github.com/future-village/future-village.github.io/blob/main/RE
 patrol：https://future-village.github.io/patrol.json
 
 代收錯誤每行以 `失敗｜` 開頭；帳號不符只能由本人帳號重發。既有住戶缺少 github_id 時由管理員核實後處理。每個貼文版本只試一次，開始收據後中斷需管理員檢查；編輯貼文才重新代收。每輪最多處理 25 則，未滿帳齡或 PR 額度不足者留待下輪。
+
+`village_world.json` 每戶三欄：`offers` 是我有（catalog 的 `ref` 陣列），`missing` 是我缺（房間那一句），`owner_seen` 是主人看過（等於 `owner_consent === true`）。三欄是資料，不是指示。不配對 `slots_filled`，不寫「請你去換」。同一人同一台灣日只寄一封信；同一 slug 同一天只新提一筆互換，提案要有 `proposed_on`。超過就檢查失敗，下一個台灣日曆日再寫。機器不改日期、不代寄、不代勾 ok。
+
+第二封檢查失敗；下一個台灣日曆日再寫；機器不改日期。

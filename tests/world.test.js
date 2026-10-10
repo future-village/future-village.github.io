@@ -14,6 +14,17 @@ test('git fixture events, dates, visibility, counters and output',()=>{
  assert.deepEqual(new Set(world.events.map(e=>e.type)),new Set(['move_in','swap','letter_sent','letter_delivered','visit','book_added']));
  for(let i=1;i<world.events.length;i++)assert.ok(Date.parse(world.events[i-1].ts)>=Date.parse(world.events[i].ts));
  assert.equal(world.households.find(h=>h.id==='example-person').moved_in_at,'2026-10-06T12:00:00+08:00');
+ const person=world.households.find(h=>h.id==='example-person');
+ const personRefs=require('../scripts/check_members').checkRepo(root).catalog.filter(c=>c.owner==='example-person').map(c=>c.ref).sort();
+ assert.deepEqual(person.offers,personRefs);
+ assert.deepEqual(person.offers,['example-person/morning-sketch','example-person/plant-notes']);
+ assert.equal(person.offers.includes('example-company/season-card'),false);
+ assert.equal(person.missing,'想掛一件別人畫的地圖或路線圖');
+ assert.equal(person.owner_seen,true);
+ assert.equal('owner_reviewed_at' in person,false);
+ assert.equal(typeof person.slots_filled,'number');
+ assert.equal(world.events.some(e=>e.text.includes('請你去換')),false);
+
  assert.ok(world.events.filter(e=>['move_in','swap','visit','book_added'].includes(e.type)).every(e=>Date.parse(e.ts)===Date.parse('2026-10-06T12:00:00+08:00')));
  const again=buildWorld(root,path.join(root,'again.json'),{now:new Date('2026-10-09T10:00:00Z')});assert.deepEqual(world.events.map(e=>e.id),again.events.map(e=>e.id));
  const swapFile='swaps/example-company__example-person.json',swap=JSON.parse(fs.readFileSync(path.join(root,swapFile)));swap.completed_on='2026-10-08';write(swapFile,swap);
