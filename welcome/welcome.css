@@ -77,7 +77,8 @@ html.is-still .sentinel{display:none}
 }
 @keyframes mark{from{background:transparent}to{background:#e7eee4}}
 @media (max-width:760px){
-  .hero,.cards,.ai-grid{grid-template-columns:1fr}
+  .hero,.cards{grid-template-columns:1fr}
+  .ai-grid{grid-template-columns:minmax(0,1fr)}
   .hero-frame{border-radius:1.5rem;max-height:32rem}
   .hero-copy{padding:1.4rem 1.25rem}
   .slots{grid-template-columns:repeat(2,minmax(0,1fr))}
