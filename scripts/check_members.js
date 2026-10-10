@@ -25,18 +25,94 @@ const EXTERNAL_LINK = /https?:\/\/|\bwww\./i;
 const SLUG = /^(?!(?:con|aux|nul|prn|com[1-9]|lpt[1-9])$)[a-z0-9][a-z0-9-]{0,40}$/;
 const FORBIDDEN_KEY = /price|pricing|cost|rarity|rare|currency|coin|價|稀有|幣/i;
 const SVG_TAGS = new Set(['svg','g','path','rect','circle','ellipse','line','polyline','polygon','text','tspan','title','desc']);
-function checkBook(book,file='book') {
+const EXECUTABLE=new RegExp('`'.repeat(3)+'|~~~|<script\\b|<%|<\\?php|javascript:|data:\\s*text\\/html|\\bon[a-z]+\\s*=','i');
+function validDate(value){
+ return DATE.test(value||'')&&Number.isFinite(Date.parse(value))&&new Date(value).toISOString().slice(0,10)===value;
+}
+// 可執行內容只認標記，不認散文裡的程式單字。
+// 命中就失敗：三個反引號、~~~、<script、<%、<?php、javascript:、data:text/html、on*=。
+// function、import、require 不算。標記寫在警告句裡也算。on*= 與素材 SVG 同一條，onion= 這種也會中，這條不放寬。
+function executableMark(text){return EXECUTABLE.test(text);}
+function checkBook(book,file='book',today=taipeiToday()) {
  const issues=[],add=(field,kind)=>issues.push({file,field,kind,fatal:true,advice:'請修正書卡'});
- for(const key of ['title','summary','source_url','added_by','made_by','license'])if(typeof book[key]!=='string'||!book[key].trim())add(key,'缺少必填');
+ if(!book||typeof book!=='object'||Array.isArray(book)){add('','JSON 必須是物件');return issues;}
+ for(const key of ['title','summary','source_url','added_by','made_by','license','version'])if(typeof book[key]!=='string'||!book[key].trim())add(key,'缺少必填');
  try{const u=new URL(book.source_url);if(u.protocol!=='https:'||!u.hostname||u.username||u.password)throw new Error();}catch{add('source_url','須為 https URL');}
  if(!Array.isArray(book.tags)||!book.tags.every(t=>typeof t==='string'&&t.trim()))add('tags','須為文字陣列');
  if(!['human','ai_marked'].includes(book.made_by))add('made_by','須為 human 或 ai_marked');
  if(book.do_not_execute!==true)add('do_not_execute','須為 true');
- const serialized=JSON.stringify(book);
+ if(!validDate(book.verified_on))add('verified_on','須為有效 YYYY-MM-DD');
+ else if(book.verified_on>today)add('verified_on','不能晚於今天（'+today+'）');
  scanText(book,'',add);
- if(/```|~~~|<script\b|<%|<\?php/i.test(serialized))add('content','不收可執行程式區塊');
+ if(executableMark(JSON.stringify(book)))add('content','不收可執行內容');
  return issues;
 }
+function checkLibrary(base,issues,today,books){
+ const rootDir=path.join(base,'library');
+ if(!fs.existsSync(rootDir))return;
+ const fail=(rel,kind)=>issues.push({file:rel,field:'',kind,fatal:true,advice:'書架只收 README.md 與 library/<id>.json'});
+ function walk(abs,rel){
+  let entries;try{entries=fs.readdirSync(abs,{withFileTypes:true});}catch{fail(rel,'書架目錄無法讀取');return;}
+  for(const ent of entries.sort((a,b)=>a.name.localeCompare(b.name))){
+   const childRel=rel+'/'+ent.name,childAbs=path.join(abs,ent.name);
+   let lst;try{lst=fs.lstatSync(childAbs);}catch{fail(childRel,'書架必須是普通檔');continue;}
+   if(lst.isSymbolicLink()){fail(childRel,'書架必須是普通檔');continue;}
+   if(lst.isDirectory()){fail(childRel,'書架只收純文字 JSON');walk(childAbs,childRel);continue;}
+   if(!lst.isFile()){fail(childRel,'書架必須是普通檔');continue;}
+   if(childRel==='library/README.md')continue;
+   const id=ent.name.endsWith('.json')?ent.name.slice(0,-5):'';
+   if(rel!=='library'||!SLUG.test(id)){fail(childRel,'書架只收純文字 JSON');continue;}
+   try{const book=readJson(childAbs);issues.push(...checkBook(book,childRel,today));books.set(id,book);}catch{issues.push({file:childRel,field:'',kind:'JSON 無法解析',fatal:true,advice:'請修正書卡'});}
+  }
+ }
+ walk(rootDir,'library');
+}
+function checkPublicProps(base,issues){
+ const dir=path.join(base,'site','world','assets','models');
+ if(!fs.existsSync(dir))return;
+ const fail=(field,kind)=>issues.push({file:'site/world/assets/models',field,kind,fatal:true,advice:'公共道具只收 CC0，並在 ART_CREDITS.md 同一行寫檔名、CC0、https 來源與 LICENSE*.txt'});
+ if(fs.lstatSync(dir).isSymbolicLink()){fail('','模型目錄必須是普通目錄');return;}
+ const found=[];
+ function walk(abs,rel,top){
+  let entries;try{entries=fs.readdirSync(abs,{withFileTypes:true});}catch{fail('','模型目錄無法讀取');return;}
+  for(const ent of entries){
+   const childAbs=path.join(abs,ent.name),childRel=rel+'/'+ent.name;
+   let lst;try{lst=fs.lstatSync(childAbs);}catch{continue;}
+   if(lst.isSymbolicLink()){if(ent.name.toLowerCase().endsWith('.glb'))fail(ent.name,'模型必須是普通檔');continue;}
+   if(lst.isDirectory()){walk(childAbs,childRel,false);continue;}
+   if(!lst.isFile()||!ent.name.toLowerCase().endsWith('.glb'))continue;
+   if(!ent.name.endsWith('.glb')){fail(ent.name,'模型副檔名只收小寫 .glb');continue;}
+   if(!top){fail(ent.name,'模型只放 models 目錄直屬');continue;}
+   found.push(ent.name);
+  }
+ }
+ walk(dir,'site/world/assets/models',true);
+ if(!found.length)return;
+ let text;try{text=fs.readFileSync(path.join(base,'ART_CREDITS.md'),'utf8');}catch{fail('ART_CREDITS.md','缺少根目錄 ART_CREDITS.md');return;}
+ const lines=text.split(/\r?\n/);
+ const cc0=/(^|[^A-Za-z0-9])CC0([^A-Za-z0-9]|$)/;
+ const nonCc0=/CC[\s-]*BY|\bMIT\b|\bApache\b|\bGPL\b|All Rights Reserved|©/i;
+ const hasFile=(line,name)=>new RegExp('(^|[^A-Za-z0-9._-])'+name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'([^A-Za-z0-9._-]|$)').test(line);
+ for(const name of found.sort()){
+  const hits=lines.filter(line=>hasFile(line,name));
+  if(hits.length!==1){fail(name,hits.length?'ART_CREDITS.md 只能有一行寫這個檔名':'ART_CREDITS.md 缺這個檔名');continue;}
+  const line=hits[0];
+  const mentions=line.match(/[A-Za-z0-9._-]+\.glb/g)||[];
+  if(mentions.length!==1||mentions[0]!==name){fail(name,'一行只寫一個道具檔名');continue;}
+  if(!cc0.test(line)){fail(name,'同一行要有 CC0');continue;}
+  if(nonCc0.test(line)){fail(name,'同一行出現非 CC0 授權');continue;}
+  if(!/https:\/\//.test(line)){fail(name,'同一行要有 https 來源');continue;}
+  const lics=line.match(/LICENSE[A-Za-z0-9._-]*\.txt/g)||[];
+  if(lics.length!==1){fail(name,'同一行要寫一個授權檔名 LICENSE*.txt');continue;}
+  const licPath=path.join(dir,lics[0]);
+  let st;try{st=fs.lstatSync(licPath);}catch{fail(name,'授權檔不在模型目錄');continue;}
+  if(st.isSymbolicLink()||!st.isFile()){fail(name,'授權檔必須是普通檔');continue;}
+  let body;try{body=fs.readFileSync(licPath,'utf8');}catch{fail(name,'授權檔無法讀取');continue;}
+  if(!cc0.test(body)||nonCc0.test(body)){fail(name,'授權檔不是 CC0');continue;}
+  scanText(line,name,(field,kind,fatal=true)=>issues.push({file:'ART_CREDITS.md',field,kind,fatal:Boolean(fatal),advice:fatal?'請移除或改用去敏描述':'已標示，仍請確認'}));
+ }
+}
+
 function checkMember(m, file = 'member') {
  const issues = [];
  const add = (field, kind, fatal = true, advice = '請移除或改用去敏描述') => issues.push({file, field, kind, fatal, advice});
@@ -276,7 +352,8 @@ function checkRepo(base = root, {today = taipeiToday()} = {}) {
    });
  }
  const books=new Map();
- for(const file of listJson(path.join(base,'library'))){const add=issue('library/'+file);try{const book=readJson(path.join(base,'library',file));issues.push(...checkBook(book,'library/'+file));books.set(file.slice(0,-5),book);}catch{add('','JSON 無法解析');}}
+ checkLibrary(base,issues,today,books);
+ checkPublicProps(base,issues);
  for(const m of members.values())for(const id of m.recommends||[])if(!books.has(id))issue('members/'+m.id+'.json')('recommends','書 id 不存在');
  // 公共目錄：由腳本從已過檢查的素材彙總，人不要手改
  const catalog = buildCatalog(materials, members, goodMaterial);

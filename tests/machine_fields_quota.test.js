@@ -129,7 +129,7 @@ test('街上、立體村與配對腳本不渲染三欄，也不寫請你去換',
   assert.equal(fs.readFileSync(path.join(root, 'site/app.js'), 'utf8').includes('這間房還缺'), true);
 });
 
-test('書架舊正例仍不要求 version 或 verified_on', () => {
-  const good = {title: 'Book', summary: 'Description', source_url: 'https://example.org/book', tags: ['tools'], added_by: 'example-person', made_by: 'human', license: 'CC BY 4.0', do_not_execute: true};
+test('書架正例帶後套稿要求的 version 與 verified_on', () => {
+  const good = {title: 'Book', summary: 'Description', source_url: 'https://example.org/book', tags: ['tools'], added_by: 'example-person', made_by: 'human', license: 'CC BY 4.0', do_not_execute: true, version: '1', verified_on: '2026-10-08'};
   assert.deepEqual(checkBook(good), []);
 });

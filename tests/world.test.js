@@ -9,7 +9,7 @@ test('git fixture events, dates, visibility, counters and output',()=>{
  const write=(rel,value)=>{fs.mkdirSync(path.dirname(path.join(root,rel)),{recursive:true});fs.writeFileSync(path.join(root,rel),typeof value==='string'?value:JSON.stringify(value));};
  const git=(...argv)=>{const r=cp.spawnSync('git',['-C',root,...argv],{encoding:'utf8',env:{...process.env,GIT_AUTHOR_DATE:'2026-10-06T12:00:00+08:00',GIT_COMMITTER_DATE:'2026-10-06T12:00:00+08:00'}});assert.equal(r.status,0,r.stderr);return r.stdout.trim();};
  git('init');const commit=(files=['.'])=>{git('add',...files);git('-c','user.name=Fixture','-c','user.email=283511868+zaxardery8011-design@users.noreply.github.com','commit','-m','Fixture');};commit(['members','rooms','materials']);commit(['swaps']);commit(['letters']);commit(['footprints']);
- write('library/book.json',{title:'測試書',summary:'一句話',source_url:'https://example.org/book',tags:[],added_by:'example-person',made_by:'human',license:'CC BY 4.0',do_not_execute:true});commit(['library']);
+ write('library/book.json',{title:'測試書',summary:'一句話',source_url:'https://example.org/book',tags:[],added_by:'example-person',made_by:'human',license:'CC BY 4.0',do_not_execute:true,version:'1',verified_on:'2026-10-06'});commit(['library']);
  const world=buildWorld(root,path.join(root,'output.json'),{now:new Date('2026-10-08T10:00:00Z')});
  assert.deepEqual(new Set(world.events.map(e=>e.type)),new Set(['move_in','swap','letter_sent','letter_delivered','visit','book_added']));
  for(let i=1;i<world.events.length;i++)assert.ok(Date.parse(world.events[i-1].ts)>=Date.parse(world.events[i].ts));

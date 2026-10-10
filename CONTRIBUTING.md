@@ -93,3 +93,39 @@ Before uploading, run node scripts/check_members.js and ask your AI to review cl
 Phone, email, ID-number or address hits reject the whole intake, except explicitly approved card contact for phones/email. Accounts must be at least 7 days old. More than 50 open intake PRs queues new check-ins; Discussions retain them for recovery every 15 minutes, subject to platform delays.
 Material consent covers public repository source files, rooms and the public catalog. Anyone can download; reproduction or adaptation requires separate permission. AI-made or assisted material please name the tool and describe human contributions in the source field.
 Ask the owner before every letter or footprint. Every letter must explicitly mark ai_written (true for AI drafts, false for human writing).
+
+## 一起蓋：第二層與第三層
+
+第一層（每戶自己的房子圖）不在這一節。
+
+### 第二層：公共建設
+
+道具模型只收 CC0。檔放在 `site/world/assets/models/` 的直屬 `.glb`。同一筆變更改根目錄 `ART_CREDITS.md`：恰好一行同時寫這個檔名、`CC0`、`https://` 來源、以及模型旁邊的 `LICENSE*.txt`。授權檔正文也要是 CC0。同一行再寫 CC BY、MIT、Apache、GPL 或 All Rights Reserved，檢查會擋。只放模型不會出現在村子裡；要擺進場景得改 `site/world/village.js` 的 `PROP_GLB`，那是第三層。不要用模型換掉 `site/assets/art/house_1.png` 到 `house_6.png`。住戶自己的房子圖不要寫進 `ART_CREDITS.md`。
+
+這份 main 上，模型目錄裡的 CC0 道具是 `fence_run.glb`（Kenney Fantasy Town Kit 2.0，授權檔 `LICENSE-kenney-fantasy-town-kit.txt`）。樹、松、路燈仍是手繪卡。
+
+書架：一本書一個 `library/<id>.json`。原有必填之外加上 `version`（非空字串）與 `verified_on`（有效 `YYYY-MM-DD`，不能晚於台北今天）。`source_url` 仍必須是 https。`made_by` 仍只准 `human` 或 `ai_marked`。`do_not_execute` 仍必須是 true。可執行內容看標記：三個反引號或 `~~~` 的圍欄、`<script`、`<%`、`<?php`、`javascript:`、`data:text/html`、`on*=`。散文裡的 function、import、require 不算。`library/` 裡除了 `README.md` 與這種 JSON，其他檔、子目錄、連結都退，包括 `SKILL.md`。
+
+書架 JSON 與 `ART_CREDITS.md` 不在 CODEOWNERS。每個 PR 仍會跑檢查。書卡要不要另外經過管理員，由 GitHub 上的審查人數決定。
+
+### 第三層：程式
+
+改 `.github/`、`scripts/`、`site/world/`（含 `village.js`）、`tests/`：先開 Issue，再提 PR。這四處由 `.github/CODEOWNERS` 指定 `@zaxardery8011-design`。這個檔案要先進 main，而且 main 的分支保護要勾上 Require review from Code Owners，合併才會被這四條擋住。那一勾由隊長在 GitHub 設定頁手動開。住戶的房子圖與書架 JSON 不必先開 Issue。公共道具的檔案放在 `site/world/` 底下，會跟著這層一起要求這位擁有者審查。
+
+不設排行榜，不設建設積分，不自動合併。
+
+### Layer 2: Shared works
+
+Prop models are CC0 only. Put a `.glb` directly in `site/world/assets/models/`. The same change edits the root `ART_CREDITS.md`: exactly one line with that file name, `CC0`, an `https://` source, and the `LICENSE*.txt` beside the model. The license text must be CC0. A line that also says CC BY, MIT, Apache, GPL, or All Rights Reserved fails. A model file stays off the village until `PROP_GLB` in `site/world/village.js` places it. That edit is layer 3. Do not replace `site/assets/art/house_1.png` through `house_6.png`. Household house pictures do not go in `ART_CREDITS.md`.
+
+On this main, the CC0 prop in the models directory is `fence_run.glb` (Kenney Fantasy Town Kit 2.0, license file `LICENSE-kenney-fantasy-town-kit.txt`). Trees, pines, and lamps stay hand-drawn cards.
+
+Library: one `library/<id>.json` per book. Add `version` (non-empty string) and `verified_on` (a real `YYYY-MM-DD`, not after today in Asia/Taipei). `source_url` stays https. `made_by` stays `human` or `ai_marked`. `do_not_execute` stays true. Executable content means a fence of three backticks or `~~~`, `<script`, `<%`, `<?php`, `javascript:`, `data:text/html`, or an `on*=` handler, in any field. The words function, import, and require do not. Any other file under `library/`, including `SKILL.md`, plus subdirectories and links, is rejected. `README.md` stays.
+
+Library JSON and `ART_CREDITS.md` are outside CODEOWNERS. The checker still runs on every pull request.
+
+### Layer 3: Code
+
+Changes under `.github/`, `scripts/`, `site/world/` (including `village.js`), and `tests/` start with an Issue, then a pull request. `.github/CODEOWNERS` assigns those four trees to `@zaxardery8011-design`. The file has to be on main, and branch protection has to enable Require review from Code Owners, before those paths block a merge. The owner turns that checkbox on by hand. House pictures and library JSON do not need an Issue first. A public prop file lives under `site/world/`, so it asks for the same owner review.
+
+No rankings, no building points, no auto-merge.
