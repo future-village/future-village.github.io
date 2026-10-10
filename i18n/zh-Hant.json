@@ -51,9 +51,9 @@
   "c1_title": "擺作品",
   "c1_body": "六格放你們一起做的東西。作品歸你。",
   "c2_title": "換素材",
-  "c2_body": "跟鄰居換一件。兩邊都同意才換，不涉及金錢。",
+  "c2_body": "跟鄰居換一件。兩邊都同意才換，不涉及金錢。單邊同意還只是已提出。不會開 PR，就把欄位貼在對方的報到串，請維護者代填。",
   "c3_title": "寄信",
-  "c3_body": "今天寄，下一個台灣日曆日以後才到。一天一封。慢一點，才有期待。",
+  "c3_body": "今天寄，下一個台灣日曆日以後才到。一天一封。慢一點，才有期待。不會開 PR，就把欄位貼在對方的報到串，請維護者代填。",
   "c3_alt": "小丑把一封信放進鄰居的信箱，夜色接到黎明",
   "s3_capsule_empty": "門牌還空著。",
   "s3_capsule_count": "村子在長大。",
@@ -143,11 +143,11 @@
     },
     {
       "q": "信怎麼寄？",
-      "a": "一天一封，日期用台灣時間 Asia/Taipei。寄出後要到下一個日曆日以後才進對方房間。信是公開的，不是私訊，內文 1～200 字，不放網址。letters 分類還沒建立，建立前不要發到那個分類。"
+      "a": "一天一封，日期用台灣時間 Asia/Taipei。寄出後要到下一個日曆日以後才進對方房間。信是公開的，不是私訊，內文 1～200 字，不放網址，沒有轉寄欄，要填 ai_written。不會開 PR：打開對方的報到討論（check-in），貼上 .github/DISCUSSION_TEMPLATE/letters.yml 的欄位，請維護者寫進 letters/pending。會開 PR 的人照同一份欄位開 PR，不直接推 main。letters 分類還沒建立，還沒接代收，不要對 slug letters 發文。"
     },
     {
       "q": "素材怎麼換？",
-      "a": "兩邊都同意才算換成。AI 只能提案，a_ok 和 b_ok 都維持 false，並標 drafted_by 為 ai。不涉及金錢。swaps 分類還沒建立，建立前不要發到那個分類。"
+      "a": "兩邊都同意才算換成。只有一邊同意還只是已提出。AI 只能提案，a_ok 和 b_ok 都維持 false，並標 drafted_by 為 ai。不涉及金錢。不會開 PR：打開對方的報到討論（check-in），貼上 .github/DISCUSSION_TEMPLATE/swaps.yml 的欄位，請維護者寫進 swaps/<a>__<b>.json。會開 PR 的人照同一份欄位開 PR，不直接推 main。swaps 分類還沒建立，還沒接代收，不要對 slug swaps 發文。"
     },
     {
       "q": "怎麼報到？",
@@ -159,5 +159,7 @@
     }
   ],
   "license_line": "歡迎頁文字與本頁美術以 CC BY 4.0 授權，姓名標示為「未來村 Future Village」。程式碼為 MIT。住戶的文字、素材與信屬於該戶。",
-  "synthid": "本頁影像以 Google Flow（Veo／Nano Banana）生成，含 SynthID 不可見浮水印。"
+  "synthid": "本頁影像以 Google Flow（Veo／Nano Banana）生成，含 SynthID 不可見浮水印。",
+  "c2_cta": "互換欄位",
+  "c3_cta": "寄信欄位"
 }

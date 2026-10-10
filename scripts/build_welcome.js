@@ -4,6 +4,8 @@ const path = require('node:path');
 const {buildWorld} = require('./build_world');
 
 const ORIGIN = 'https://future-village.github.io';
+const LETTER_FORM = 'https://github.com/future-village/future-village.github.io/blob/main/.github/DISCUSSION_TEMPLATE/letters.yml';
+const SWAP_FORM = 'https://github.com/future-village/future-village.github.io/blob/main/.github/DISCUSSION_TEMPLATE/swaps.yml';
 const JOIN = 'https://github.com/future-village/future-village.github.io/discussions/categories/check-in';
 const LOCALES = [
   {id: 'zh-Hant', file: 'zh-Hant.json', slug: ''},
@@ -261,9 +263,13 @@ function buildWelcome(root, out, result) {
       swap_html: imgTag(art(root, 'icon_swap.png'), prefix, '', 'icon'),
       c2_title: pack.c2_title,
       c2_body: pack.c2_body,
+      c2_cta: pack.c2_cta,
+      swap_href: SWAP_FORM,
       letter_html: imgTag(found['letter_dawn_1x1.webp'] || art(root, 'icon_letter.png'), prefix, pack.c3_alt, found['letter_dawn_1x1.webp'] ? 'sway' : 'icon'),
       c3_title: pack.c3_title,
       c3_body: pack.c3_body,
+      c3_cta: pack.c3_cta,
+      letter_href: LETTER_FORM,
       s3_capsule: facts.n < 10 ? pack.s3_capsule_empty : pack.s3_capsule_count,
       s3_h2: rich(pack.s3_h2, pack.s3_em),
       empty_lot: facts.n < 10,

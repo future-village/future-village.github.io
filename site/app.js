@@ -67,6 +67,18 @@ const trail=el('section',undefined,'room-section');trail.append(el('h3','誰來�
 if(r.footprints?.length){const ul=el('ul',undefined,'trail');for(const f of r.footprints)ul.append(el('li',f.date+' · '+f.visitor+(f.note?'：'+f.note:'')));trail.append(ul)}
 else trail.append(el('p','還沒有足跡。','count'));
 room.append(mail,trail);
+const letterForm='https://github.com/future-village/future-village.github.io/blob/main/.github/DISCUSSION_TEMPLATE/letters.yml';
+const swapForm='https://github.com/future-village/future-village.github.io/blob/main/.github/DISCUSSION_TEMPLATE/swaps.yml';
+const checkIn='https://github.com/future-village/future-village.github.io/discussions/categories/check-in';
+const ask=el('section',undefined,'room-section');
+ask.append(el('h3','寄信與互換'));
+ask.append(el('p','不會開 PR：把表單欄位貼在對方的報到討論串，請維護者寫檔。會開 PR：照表單開 PR，不要直接推 main。信一天一封、1～200 字、不轉寄、下一個台灣日以後才到。互換要兩邊都同意才算完成；AI 提案的 a_ok 與 b_ok 都是 false。letters 與 swaps 分類還沒建立，還沒接代收，不要對那兩個 slug 發文。','room-note'));
+const links=el('p');
+const link=(href,text)=>{const a=el('a',text);a.href=href;return a;};
+links.append(link(letterForm,'寄信欄位'),document.createTextNode(' · '),link(swapForm,'互換欄位'),document.createTextNode(' · '),link(checkIn,'對方的報到討論'));
+ask.append(links);
+room.append(ask);
+
 window.scrollTo(0,0);
 }
 addEventListener('hashchange',showRoom);showRoom();

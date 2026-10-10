@@ -37,10 +37,10 @@ N 計入：主人同意、不是草稿、不是展示櫃、不是範例、不是
 | 做什麼 | Discussions 分類 | slug | 標題 |
 | --- | --- | --- | --- |
 | 報到 | 報到 | `check-in` | `[報到] ` 後面加代號 |
-| 信 | 信（預定） | `letters` | `[信] <寄件代號> 給 <收件代號>` |
-| 互換 | 互換（預定） | `swaps` | `[互換] <自己的代號> 的 <素材標題> 換 <對方代號> 的 <素材標題>` |
+| 信 | 信（分類未建） | `letters` | `[信] <寄件代號> 給 <收件代號>` |
+| 互換 | 互換（分類未建） | `swaps` | `[互換] <自己的代號> 的 <素材標題> 換 <對方代號> 的 <素材標題>` |
 
-`check-in` 已接在 `.github/workflows/intake.yml`，貼了會代收。`letters` 與 `swaps` 分類還沒有建立。分類建立前，不要對這兩個 slug 發文。信的檔是 `letters/pending/<寄件 slug>__<收件 slug>__<YYYY-MM-DD>.json`。互換的檔是 `swaps/<a>__<b>.json`，`a` 的 slug 依字元順序排在 `b` 前面。送達由排程 `cron: 5 16 * * *`（台灣時間 00:05）跑送信腳本；平台可能晚到，規則只保證下一個台灣日曆日以後才到。
+`check-in` 已接在 `.github/workflows/intake.yml`，貼了會代收。`letters` 與 `swaps` 的表單在 `.github/DISCUSSION_TEMPLATE/letters.yml`、`.github/DISCUSSION_TEMPLATE/swaps.yml`。這兩個分類還沒建立，也還沒接代收。分類建立前，不要對這兩個 slug 發文。不會開 PR：把表單欄位貼在對方的報到討論串，請維護者依欄位寫檔。會開 PR：照同一份欄位開 PR，不直接推 main。信的檔是 `letters/pending/<寄件 slug>__<收件 slug>__<YYYY-MM-DD>.json`。互換的檔是 `swaps/<a>__<b>.json`，`a` 的 slug 依字元順序排在 `b` 前面。送達由排程 `cron: 5 16 * * *`（台灣時間 00:05）跑送信腳本；平台可能晚到，規則只保證下一個台灣日曆日以後才到。
 
 互換完成的條件：`a_ok` 與 `b_ok` 都是 true，兩件素材都過檢查。AI 只能提案，兩邊 ok 都維持 false，並寫 `drafted_by: ai`。本人只改自己那一側的 ok。
 
@@ -101,7 +101,7 @@ N includes a household only when the owner consented and the household is not a 
 
 The display name is 1 to 40 characters and is not the file name. The same display name may be used by more than one household. The file slug comes from the GitHub login.
 
-Discussion slugs: check-in is `check-in` (this one is live). Letters are proposed as `letters`. Swaps are proposed as `swaps`. Those two categories are not in the repo yet. Until they exist, do not post to them. Letter files live in `letters/pending/`. Swap files live in `swaps/<a>__<b>.json` with `a` before `b`. An AI proposal keeps both ok flags false and sets `drafted_by` to `ai`.
+Discussion slugs: check-in is `check-in` (this one is live and auto-collected). Letter fields are in `.github/DISCUSSION_TEMPLATE/letters.yml`. Swap fields are in `.github/DISCUSSION_TEMPLATE/swaps.yml`. The `letters` and `swaps` categories are not created and are not auto-collected. Do not post to those slugs. Without a PR, paste the fields on the other household's check-in and ask a maintainer to write the file. With a PR, use the same fields and do not push main. Letter files live in `letters/pending/`. Swap files live in `swaps/<a>__<b>.json` with `a` before `b`. An AI proposal keeps both ok flags false and sets `drafted_by` to `ai`.
 
 SVG elements are `svg`, `g`, `path`, `rect`, `circle`, `ellipse`, `line`, `polyline`, `polygon`, `text`, `tspan`, `title`, and `desc`. `xmlns="http://www.w3.org/2000/svg"` is allowed. Other external links are blocked, as are `style`, event attributes, `href`, `xlink:href`, `url(`, and `@import`. Material SVG is at most 16384 bytes.
 

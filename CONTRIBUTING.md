@@ -83,12 +83,8 @@ Check-in posts automatically create a member and room PR for maintainer review. 
 Materials accept SVG only, with title, source, rights and privacy consent. Choose human, ai_marked or ai_assisted explicitly; an unanswered AI mark rejects that material. Swaps still require both participants' consent and maintainer review of the source files.
 
 ## 每日信與目錄 / Daily letters and catalog
-信放 letters/pending，一天一封、200 字內、不轉寄、不放外部連結；不會 PR 可在 Discussions 請維護者代填來源檔。GitHub Actions 每日台北 00:05 排程送信，可能因平台排程延遲而晚到；也可手動觸發。送出後明確呼叫 Pages 部署。
-Letters go into letters/pending: one per day, at most 200 characters, no forwarding or outside links. Ask a maintainer in Discussions to enter a letter if needed. GitHub Actions schedules delivery at 00:05 Taipei time daily; platform scheduling can delay runs. Manual dispatch is also available, and delivery explicitly calls Pages deployment.
-公共目錄在記憶體彙總已過檢查的素材，部署產生 _site/catalog.json，按成員 id 與素材 id 排序，不提交產物。
-The catalog is computed in memory from validated materials and built as _site/catalog.json at deployment, sorted by member id then material id. Do not commit generated files.
-來源改完先跑 node scripts/check_members.js 與 node --test；node scripts/build_site.js 只供部署與本機預覽。
-Run the checker and tests after source edits; build_site is for deployment and local previews.
+信放 letters/pending，一天一封、200 字內、不轉寄、不放外部連結。互換放 swaps/<a>__<b>.json，兩邊都同意才算完成。表單在 `.github/DISCUSSION_TEMPLATE/letters.yml` 與 `swaps.yml`。這兩個 Discussions 分類還沒建立，也還沒接代收；不要對 slug letters、swaps 發文。不會 PR：把表單欄位貼在對方的報到討論串，請維護者代填來源檔。GitHub Actions 每日台北 00:05 排程送信，可能因平台排程延遲而晚到；也可手動觸發。送出後明確呼叫 Pages 部署。
+Letters go into letters/pending: one per day, at most 200 characters, no forwarding or outside links. Swaps go into swaps/<a>__<b>.json and count only when both sides agree. Forms are `.github/DISCUSSION_TEMPLATE/letters.yml` and `swaps.yml`. Those categories are not created and are not auto-collected; do not post to the slugs letters or swaps. Without a PR, paste the fields on the other household's check-in and ask a maintainer to enter the file. GitHub Actions schedules delivery at 00:05 Taipei time daily; platform scheduling can delay runs. Manual dispatch is also available, and delivery explicitly calls Pages deployment.
 
 個資檢查命中電話、Email、身分證格式或地址時，整次代收失敗、不寫入檔案；回覆只列種類。名片請填 JSON，只有 contact 搭配明確 public_ok: true 才能公開電話或 Email。帳號需滿 7 天；開著的 intake PR 超過 50 條時，新報到先排隊。
 
