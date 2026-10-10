@@ -14,6 +14,9 @@ const patterns = [
  ['金鑰', /(?:sk-(?:proj-)?[A-Za-z0-9_-]{8,}|gh[pousr]_[A-Za-z0-9_]{8,}|github_pat_[A-Za-z0-9_]{8,}|AKIA[A-Z0-9]{16}|AIza[A-Za-z0-9_-]{20,}|xox[abpors]-[A-Za-z0-9-]{8,}|-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----)/, true],
  ['LINE 連結', /(?:line\.me|lin\.ee|line\.naver\.jp)(?![\w-])/i, true]
 ];
+const {imageIssue,imageSize}=require('./export_public');
+const HOUSE_BYTES=400*1024;
+const HOUSE_EDGE=1024;
 const SLOTS = 6;
 const MISSING_MAX = 60;
 const LETTER_MAX = 200;
@@ -199,6 +202,76 @@ function readJson(file) { return JSON.parse(fs.readFileSync(file,'utf8')); }
 function listJson(dir) { return fs.existsSync(dir) ? fs.readdirSync(dir).filter(f=>f.endsWith('.json')).sort() : []; }
 function listDirs(dir) { return fs.existsSync(dir) ? fs.readdirSync(dir,{withFileTypes:true}).filter(d=>d.isDirectory()).map(d=>d.name).sort() : []; }
 // 整個 repo：成員、房間、素材、互換，以及 N 的數法。
+function pngAnimated(buf){
+ let offset=8;
+ while(offset+12<=buf.length){
+  const size=buf.readUInt32BE(offset),type=buf.toString('ascii',offset+4,offset+8);
+  if(type==='acTL'||type==='fcTL'||type==='fdAT')return true;
+  if(size>buf.length-offset-12)return false;
+  offset+=size+12;
+  if(type==='IEND')break;
+ }
+ return false;
+}
+function checkHouses(base,issues,issue){
+ const houses=new Map();
+ const roomRoot=path.join(base,'rooms');
+ if(!fs.existsSync(roomRoot))return houses;
+ for(const slug of listDirs(roomRoot)){
+  const dir=path.join(roomRoot,slug),before=issues.length,add=issue('rooms/'+slug);
+  let names;
+  try{names=fs.readdirSync(dir,{withFileTypes:true});}
+  catch{add('house','房間目錄讀不到',true,'請改成普通資料夾');continue;}
+  const houseNames=names.filter(e=>/^house\./i.test(e.name));
+  if(!houseNames.length)continue;
+  if(!SLUG.test(slug))add('house','房子圖目錄須為住戶 slug');
+  if(houseNames.some(e=>!['house.png','house.webp','house.json'].includes(e.name)))add('house','房子圖只收 PNG 或 WebP');
+  const hasPng=houseNames.some(e=>e.name==='house.png'),hasWebp=houseNames.some(e=>e.name==='house.webp'),hasMeta=houseNames.some(e=>e.name==='house.json');
+  if(hasPng&&hasWebp)add('house','房子圖只留 PNG 或 WebP 一種');
+  if(!hasPng&&!hasWebp)add('house','缺少房子圖');
+  if(!hasMeta)add('house','缺少 house.json');
+  const imageName=hasPng&&!hasWebp?'house.png':hasWebp&&!hasPng?'house.webp':null;
+  const fileStat=name=>{
+   const full=path.join(dir,name);
+   let st;try{st=fs.lstatSync(full);}catch{add('house','房子圖必須是普通檔');return null;}
+   if(st.isSymbolicLink()||!st.isFile()){add('house','房子圖必須是普通檔');return null;}
+   return {full,st};
+  };
+  if(imageName){
+   const image=fileStat(imageName);
+   if(image&&image.st.size>HOUSE_BYTES)add('house','房子圖超過 400KB');
+   else if(image){
+    const buf=fs.readFileSync(image.full),ext=imageName.endsWith('.webp')?'.webp':'.png',img=imageIssue(buf,ext);
+    if(img)add('house','房子圖未過影像檢查：'+img);
+    else if(ext==='.png'&&pngAnimated(buf))add('house','房子圖必須是靜態圖');
+    else{
+     const size=imageSize(buf,ext);
+     if(!size||size.width<1||size.height<1||size.width>HOUSE_EDGE||size.height>HOUSE_EDGE)add('house','房子圖尺寸須為 1～1024');
+    }
+   }
+  }
+  if(hasMeta){
+   const metaFile=fileStat('house.json');
+   if(metaFile){
+    let meta;try{meta=readJson(metaFile.full);}catch{add('house.json','JSON 無法解析');meta=null;}
+    if(meta&&(typeof meta!=='object'||Array.isArray(meta))){add('house.json','JSON 必須是物件');meta=null;}
+    if(meta){
+     const madd=issue('rooms/'+slug+'/house.json');
+     for(const key of Object.keys(meta))if(!['source','rights_ok','desensitized_ok','made_by'].includes(key))madd(key,'house.json 只收 source、rights_ok、desensitized_ok、made_by');
+     if(!(typeof meta.source==='string'&&meta.source.trim()))madd('source','缺少出處');
+     if(typeof meta.source==='string'&&EXTERNAL_LINK.test(meta.source))madd('source','不收外部連結');
+     if(meta.rights_ok!==true)madd('rights_ok','缺少本人的權利勾');
+     if(meta.desensitized_ok!==true)madd('desensitized_ok','缺少去敏勾');
+     if(!['human','ai_marked','ai_assisted'].includes(meta.made_by))madd('made_by','須為 human、ai_marked 或 ai_assisted');
+     forbiddenKeys(meta,'',madd);scanText(meta,'',madd);
+    }
+   }
+  }
+  if(imageName&&SLUG.test(slug)&&!issues.slice(before).some(i=>i.fatal))houses.set(slug,'rooms/'+slug+'/'+imageName);
+ }
+ return houses;
+}
+
 function checkRepo(base = root, {today = taipeiToday()} = {}) {
  const issues = [];
  const issue = file => (field, kind, fatal = true, advice = '請修正') => issues.push({file, field, kind, fatal, advice});
@@ -307,6 +380,7 @@ function checkRepo(base = root, {today = taipeiToday()} = {}) {
    rooms.set(slug,r);
  }
  for (const slug of members.keys()) if (!roomDirs.includes(slug)) issue('rooms/'+slug)('','每個成員要有一間 room.json');
+ const houses=checkHouses(base,issues,issue);
  // 每日一封信：一個人一個日曆日只寄一封；待送的隔一個日曆日以後才移到已送；沒有轉寄欄
  const letters = {pending: [], delivered: []}, sentOn = new Map();
  for (const box of ['pending','delivered']) for (const file of listJson(path.join(base,'letters',box))) {
@@ -359,7 +433,7 @@ function checkRepo(base = root, {today = taipeiToday()} = {}) {
  const catalog = buildCatalog(materials, members, goodMaterial);
  // N：主人同意、不是展示櫃、不是範例、不是草稿
  const n = [...members.values()].filter(m => m.owner_consent === true && m.showcase !== true && m.example !== true && m.demo !== true && m.draft !== true).length;
- return {files: memberFiles.length, issues, n, members, materials, swaps, rooms, letters, footprints, catalog};
+ return {files: memberFiles.length, issues, n, members, materials, swaps, rooms, letters, footprints, catalog, houses};
 }
 function buildCatalog(materials, members, ok) {
  return [...materials.keys()].filter(ok).sort().map(ref => {
@@ -407,4 +481,4 @@ if (require.main === module) {
    process.exitCode=failed?1:0;
  } catch(e) { console.error('檢查失敗：'+e.message);process.exitCode=1; }
 }
-module.exports={checkBook,checkMember,checkDirectory,checkRepo,materialSvgIssues,safeSvg,taipeiToday,nextTaipeiDay,SLOTS,MISSING_MAX,LETTER_MAX,SLUG};
+module.exports={checkBook,checkMember,checkDirectory,checkRepo,materialSvgIssues,safeSvg,taipeiToday,nextTaipeiDay,SLOTS,MISSING_MAX,LETTER_MAX,SLUG,HOUSE_BYTES,HOUSE_EDGE};

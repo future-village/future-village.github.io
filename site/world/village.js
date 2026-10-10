@@ -3,6 +3,22 @@ import {model,newEvents,route,roadsidePlots} from './data.mjs';
 import {worldPaths} from './paths.mjs';
 import {buildGround,eveningSky,toonRamp,GROUND_TOP_Y} from './ground.mjs';
 
+export function houseVariant(id){let hash=2166136261;for(const c of id)hash=Math.imul(hash^c.charCodeAt(0),16777619);return 1+(hash>>>0)%6;}
+export const HOUSE_ART_RE=/^rooms\/(?!(?:con|aux|nul|prn|com[1-9]|lpt[1-9])\/)[a-z0-9][a-z0-9-]{0,40}\/house\.(?:png|webp)$/;
+export function houseArtPlan(household){
+  const id=household&&typeof household.id==='string'?household.id:'';
+  const preset='house_'+houseVariant(id);
+  const rel=household&&household.house_art;
+  if(typeof rel!=='string'||rel.includes('..')||rel.includes('\\')||!HOUSE_ART_RE.test(rel))return {kind:'preset',name:preset};
+  return {kind:'custom',rel,preset};
+}
+export function applyHouseLoadError(mesh,presetMaterial){
+  mesh.material=presetMaterial;
+  if(!mesh.userData)mesh.userData={};
+  mesh.userData.houseArt='preset';
+  return 'preset';
+}
+
 export {GROUND_TOP_Y};
 export const HOUSE_W=22,HOUSE_H=26,HOUSE_WARM=0xfff0e0,HOUSE_ALPHA_TEST=.4;
 export const CAMERA_PITCH_MAX=Math.PI/3,CAMERA_PITCH_MIN=18*Math.PI/180,CAMERA_PITCH_DEFAULT=32*Math.PI/180;
@@ -231,7 +247,7 @@ function start(){
   function sprite(name,x,y,z,size){const m=new T.Sprite(spriteMaterial(name));m.position.set(x,y,z);m.scale.set(size,size,1);scene.add(m);return m;}
   const zones=[['村口告示牌',0,78,'notice_board',16],['交換市集',-40,57,'market'],['郵局',0,57,'post_office'],['書架館',40,57,'library'],['廣場',0,-57,'plaza']];
   for(const [name,x,z,art,size=28] of zones){sprite(art,x,12,z,size);label(name,x,29,z);}
-  function houseVariant(id){let hash=2166136261;for(const c of id)hash=Math.imul(hash^c.charCodeAt(0),16777619);return 1+(hash>>>0)%6;}
+
   const houseGeo=new T.PlaneGeometry(1,1),houseMats=new Map();
   function houseMaterial(name){
     if(!houseMats.has(name)){
@@ -241,6 +257,34 @@ function start(){
     }
     return houseMats.get(name);
   }
+  function customHouseMaterial(plan){
+    const url=paths.householdArt(plan.rel);
+    if(!url)return houseMaterial(plan.preset);
+    const key='custom:'+url;
+    if(houseMats.has(key))return houseMats.get(key);
+    let material=null,failed=false;
+    // Custom art stays 0xffffff. HOUSE_WARM would tint a household picture.
+    const texture=loader.load(url,undefined,undefined,()=>{
+      failed=true;
+      if(!material)return;
+      for(const mesh of houseMeshes){
+        if(mesh.material!==material)continue;
+        const row=world&&world.households&&world.households[mesh.userData.index];
+        const preset=row&&typeof row.id==='string'?houseMaterial('house_'+houseVariant(row.id)):houseMaterial(plan.preset);
+        applyHouseLoadError(mesh,preset);
+      }
+      houseMats.delete(key);
+      if(texture.dispose)texture.dispose();
+    });
+    if(failed)return houseMaterial(plan.preset);
+    texture.colorSpace=T.SRGBColorSpace;
+    material=new T.MeshLambertMaterial({map:texture,color:0xffffff,alphaTest:HOUSE_ALPHA_TEST,transparent:false,fog:true,premultipliedAlpha:false});
+    material.depthWrite=true;
+    material.userData.houseArt='custom';
+    houseMats.set(key,material);
+    return material;
+  }
+
   const houseMeshes=Array.from({length:512},()=>{const m=new T.Mesh(houseGeo,houseMaterial('house_1'));m.visible=false;m.castShadow=m.receiveShadow=false;m.renderOrder=2;scene.add(m);return m;});
   const shadowGeo=new T.PlaneGeometry(1,1);shadowGeo.rotateX(-Math.PI/2);
   const shadowMat=new T.MeshBasicMaterial({map:contactShadowTexture(),transparent:true,depthWrite:false,fog:true});
@@ -277,7 +321,9 @@ function start(){
     for(const index of growing.keys())if(index>=count)growing.delete(index);
     for(let i=0;i<count;i++){
       const h=world.households[i],p=h.position,art=houseMeshes[i];
-      art.material=houseMaterial('house_'+houseVariant(h.id));art.userData.index=i;poseHouse(art,p.x,p.z,0,HOUSE_H);
+      const plan=houseArtPlan(h);
+      art.material=plan.kind==='custom'?customHouseMaterial(plan):houseMaterial(plan.name);
+      art.userData.houseArt=plan.kind;art.userData.index=i;poseHouse(art,p.x,p.z,0,HOUSE_H);
       placeInstance(pads,i,p.x,GROUND_TOP_Y-PAD_H/2,p.z,PAD_W,PAD_H,PAD_D);
       placeInstance(contactShadows,i,p.x,GROUND_TOP_Y+.04,p.z,18,1,12);
       if(!homeMeshes.has(h.id)){const l=label(h.handle,p.x,GROUND_TOP_Y+HOUSE_H+2,p.z,true);l.onclick=()=>select(h);homeMeshes.set(h.id,l);}

@@ -129,3 +129,34 @@ Library JSON and `ART_CREDITS.md` are outside CODEOWNERS. The checker still runs
 Changes under `.github/`, `scripts/`, `site/world/` (including `village.js`), and `tests/` start with an Issue, then a pull request. `.github/CODEOWNERS` assigns those four trees to `@zaxardery8011-design`. The file has to be on main, and branch protection has to enable Require review from Code Owners, before those paths block a merge. The owner turns that checkbox on by hand. House pictures and library JSON do not need an Issue first. A public prop file lives under `site/world/`, so it asks for the same owner review.
 
 No rankings, no building points, no auto-merge.
+
+## 一起蓋：三層
+
+### 第一層：蓋自己的房子
+
+一戶可以放一張自己的房子圖，給立體村子的外觀用。沒有這張圖時，畫面用現有的六張預設卡：`site/assets/art/house_1.png` 到 `house_6.png`，依戶的代碼挑選。那次挑選跟排名、積分、過關無關。
+
+放哪裡：`rooms/<你的 slug>/house.png` 或 `rooms/<你的 slug>/house.webp`，兩種只留一種。同目錄再放 `house.json`。`room.json` 仍只收 `owner`、`slots`、`missing`。不要改 `site/assets/art/` 那六張預設卡。不要放進 `materials/`。第一版不收 SVG、gif、jpg。
+
+`house.json` 只准這四個鍵：`source`（出處，一句話，不放 http、https、www）、`rights_ok`（必須 true）、`desensitized_ok`（必須 true）、`made_by`。`made_by` 三選一：`human`、`ai_marked`、`ai_assisted`。權利與去敏的意思跟房間素材相同：原檔在公開 repo，網站可以顯示；這張圖仍屬該戶。
+
+檔案：單檔最多 400×1024 bytes。寬與高各 1 到 1024，含 1024。PNG、WebP 都要是靜態圖。透明底才能沿著房子輪廓切出來；不透明的圖檢查會過，畫面上會是一塊矩形。PNG 不收 tEXt、iTXt、zTXt、eXIf，也不收 acTL、fcTL、fdAT。WebP 沿用現有影像檢查，EXIF、XMP、ICCP 與帶動畫旗標的 VP8X 會退。檔案必須是普通檔。
+
+只能改自己那戶的這三個檔名。PR 作者是開 PR 的 GitHub login，對上的 slug 與報到時相同。`members/<slug>.json` 的 `github` 也要對上這個 login。對不上就退。管理員 `@zaxardery8011-design` 例外。代收報到的 PR 不要附這三個檔；要交房子圖就用自己的帳號另開 PR。沒有 `github` 欄的戶，由管理員處理。
+
+總覽只換房子圖。標記留在 `house.json`。頁面不標 AI、作者或分數。
+
+送出前在 repo 根目錄跑 `node scripts/check_members.js` 與 `node --test`。歸屬那一步在 PR 的 Check 裡跑。本機要先看時：
+
+`PR_AUTHOR=<你的 login> PR_FILES=<變更路徑，一行一個> node scripts/check_house_owner.js`
+
+### Layer 1: Build your own house
+
+A household may add one picture at `rooms/<slug>/house.png` or `rooms/<slug>/house.webp`, plus `house.json` in that folder. Never both pictures. With no picture, the village keeps `site/assets/art/house_1.png` through `house_6.png`, chosen from the household id.
+
+`house.json` has exactly `source`, `rights_ok: true`, `desensitized_ok: true`, and `made_by` (`human`, `ai_marked`, or `ai_assisted`). `source` is one line and rejects http, https, and www. The file is at most 400×1024 bytes. Width and height are each 1 through 1024. Still PNG or WebP only. Regular files only.
+
+A pull request may touch those three names only for the opener's own slug. The slug is the check-in slug of `pull_request.user.login`, and `members/<slug>.json` `github` must match that login. `@zaxardery8011-design` is the maintainer exception. Intake PRs should leave these three names alone.
+
+The overview swaps the picture only. Run `node scripts/check_members.js` and `node --test` before opening the PR. The author check runs in the Check workflow.
+

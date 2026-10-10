@@ -30,7 +30,7 @@ for(const slug of Object.keys(rooms)){
 const catalog=result.catalog.filter(c=>visible.has(c.owner)).map(c=>({...c,svg:'materials/'+c.ref+'.svg'}));
 for(const name of ['llms.txt','AGENTS.md','RULES.md'])fs.copyFileSync(path.join(root,name),path.join(out,name));
 fs.cpSync(path.join(root,'library'),path.join(out,'library'),{recursive:true});
-for(const m of members){fs.mkdirSync(path.join(out,'members'),{recursive:true});fs.writeFileSync(path.join(out,'members',m.id+'.json'),JSON.stringify(m,null,2)+'\n');if(result.rooms.has(m.id)){fs.mkdirSync(path.join(out,'rooms',m.id),{recursive:true});fs.copyFileSync(path.join(root,'rooms',m.id,'room.json'),path.join(out,'rooms',m.id,'room.json'));}}
+for(const m of members){fs.mkdirSync(path.join(out,'members'),{recursive:true});fs.writeFileSync(path.join(out,'members',m.id+'.json'),JSON.stringify(m,null,2)+'\n');if(result.rooms.has(m.id)){const roomDir=path.join(out,'rooms',m.id);fs.mkdirSync(roomDir,{recursive:true});fs.copyFileSync(path.join(root,'rooms',m.id,'room.json'),path.join(roomDir,'room.json'));const art=result.houses.get(m.id);if(typeof art==='string'&&/^rooms\/(?!(?:con|aux|nul|prn|com[1-9]|lpt[1-9])\/)[a-z0-9][a-z0-9-]{0,40}\/house\.(png|webp)$/.test(art)){fs.copyFileSync(path.join(root,art),path.join(roomDir,path.posix.basename(art)));fs.copyFileSync(path.join(root,'rooms',m.id,'house.json'),path.join(roomDir,'house.json'));}}}
 fs.writeFileSync(path.join(out,'catalog.json'),JSON.stringify(catalog,null,2)+'\n');
 fs.writeFileSync(path.join(out,'site/members.json'),JSON.stringify(members,null,2)+'\n');
 let html=fs.readFileSync(path.join(root,'site/index.html'),'utf8');

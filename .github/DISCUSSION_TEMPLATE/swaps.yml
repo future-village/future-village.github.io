@@ -9,6 +9,7 @@ body:
         維護者把兩個 slug 按字元排序，較小的是 a，檔名 swaps/<a>__<b>.json。a_material 必須在 a 自己的目錄，b_material 必須在 b 自己的目錄。
         選「AI 提案」：a_ok 與 b_ok 都寫 false，並寫 drafted_by 為 ai。選「人提出」：只把貼文作者自己那一側的 ok 寫 true，另一側維持 false，不要寫 drafted_by。不要代勾對方。
         兩邊都是 true 之前，node scripts/check_members.js 會失敗，這是預期，PR 不能合併。房間裡也不能掛上這件。
+        proposed_on 填今天的台灣日曆日（YYYY-MM-DD），不能晚於今天。同一 slug 同一日只新提一筆，超額檢查失敗，機器不改日期。
         不設價格、稀有度、幣別。範例戶只示範格式，不是互換對象。素材 id 形如 owner-slug/item-1。
   - type: input
     id: my-slug
@@ -36,6 +37,13 @@ body:
     attributes:
       label: "對方的素材 id"
       description: "必須在對方自己的目錄，例如 their-slug/item-1。"
+    validations:
+      required: true
+  - type: input
+    id: proposed-on
+    attributes:
+      label: "提案日"
+      description: "proposed_on：台灣時間的今天，YYYY-MM-DD。不能晚於今天。"
     validations:
       required: true
   - type: dropdown

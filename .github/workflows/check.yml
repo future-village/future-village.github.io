@@ -16,3 +16,13 @@ jobs:
           node-version: '22'
       - run: node --test
       - run: node scripts/check_members.js
+      # pull_request author is the opener. workflow_dispatch has no author, so this step is skipped.
+      # The file list uses the API because persist-credentials is false.
+      - name: Own house files belong to the PR author
+        if: github.event_name == 'pull_request'
+        env:
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/check_house_owner.js
