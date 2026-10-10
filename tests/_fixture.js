@@ -8,10 +8,15 @@ function seed(dest,source=path.resolve(__dirname,'..')) {
   for(const name of fs.readdirSync(path.join(source,dir))){
    if(!/^(?:example-person|example-company|aiwff-main-brain)(?:\.|__|$)/.test(name)&&!(dir==='letters'&&['pending','delivered'].includes(name)))continue;
    const src=path.join(source,dir,name),out=path.join(dest,dir,name);
-   if(dir==='letters'){fs.mkdirSync(out,{recursive:true});for(const file of fs.readdirSync(src))if(/^example-(?:person|company)__example-(?:person|company)__/.test(file))fs.copyFileSync(path.join(src,file),path.join(out,file));}
+   // Mail fixtures must not follow the live delivery workflow's daily moves.
+   if(dir==='letters')continue;
    else fs.cpSync(src,out,{recursive:true});
   }
  }
+ for(const state of ['pending','delivered'])fs.mkdirSync(path.join(dest,'letters',state),{recursive:true});
+ const letter={from:'example-person',to:'example-company',date:'2026-10-08',body:'虛構測試信',ai_written:false};
+ fs.writeFileSync(path.join(dest,'letters/pending/example-person__example-company__2026-10-08.json'),JSON.stringify(letter));
+ fs.writeFileSync(path.join(dest,'letters/delivered/example-company__example-person__2026-10-07.json'),JSON.stringify({...letter,from:'example-company',to:'example-person',date:'2026-10-07',delivered_on:'2026-10-08'}));
  return dest;
 }
 function fixture(prefix='fixture-'){return seed(mkTmp(prefix));}

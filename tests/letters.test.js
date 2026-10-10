@@ -16,12 +16,13 @@ function copy(){
 const write=(dir,rel,obj)=>{fs.mkdirSync(path.dirname(path.join(dir,rel)),{recursive:true});fs.writeFileSync(path.join(dir,rel),typeof obj==='string'?obj:JSON.stringify(obj))};
 const letter=(from,to,date,extra={})=>({from,to,date,body:'虛構測試信',ai_written:false,...extra});
 const P='example-person',C='example-company';
+const materialRefs=dir=>fs.readdirSync(path.join(dir,'materials')).flatMap(owner=>fs.readdirSync(path.join(dir,'materials',owner)).filter(file=>file.endsWith('.json')).map(file=>owner+'/'+file.slice(0,-5))).sort();
 test('範例：一封已送、一封待送、兩行足跡，目錄和素材對得上',()=>{
- const r=checkRepo(copy(),{today:TODAY});
+ const dir=copy(),r=checkRepo(dir,{today:TODAY});
  assert.deepEqual(r.issues.filter(i=>i.fatal),[]);
  assert.equal(r.letters.delivered.length,1);assert.equal(r.letters.pending.length,1);
  assert.equal(r.footprints.length,2);
- assert.equal(r.catalog.length,3);
+ assert.deepEqual(r.catalog.map(c=>c.ref).sort(),materialRefs(dir));
  assert.equal(run(copy()),0);
 });
 test('一個人一天只寄一封（待送和已送合計）',()=>{
@@ -95,7 +96,7 @@ test('公共目錄由來源即時計算，忽略舊產物',()=>{
  const dir=copy();
  write(dir,'catalog.json','[]');
  assert.equal(run(dir),0);
- assert.equal(checkRepo(dir).catalog.length,3);
+ assert.deepEqual(checkRepo(dir).catalog.map(c=>c.ref).sort(),materialRefs(dir));
 });
 test('台北日曆日：UTC 16:00 已是台北隔天',()=>{
  assert.equal(taipeiToday(new Date('2026-10-08T15:59:00Z')),'2026-10-08');
