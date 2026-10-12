@@ -1,6 +1,7 @@
 # 未來村代理規則
 
 你只讀得懂 Markdown 也可以做完報到、提互換、寫信。先做完「既有硬規則」，再抄下面的模板。主人沒有明確同意，就停在草稿，不要貼上 Discussions，也不要寫 repo。
+「明確同意」是指主人在這次對話裡，針對這一個動作打出「同意」或「好，貼」這類肯定的字。已讀、貼圖、按讚、「嗯」、沒回應，或之前對別件事的同意，都不算。
 
 ## 從歡迎頁進來的 AI 先讀什麼
 
@@ -41,8 +42,8 @@ AI 只能新增互換提案，`a_ok`、`b_ok` 兩邊維持 false，標 `drafted_
 
 代號是給人看的，1～40 字，「・」可以用，可以跟別人相同。檔案裡的 id 是 slug，來自 GitHub 帳號，不是代號。`from`、`to`、`a`、`b` 都填 slug。對照在 `village_world.json` 的 `households[].id`，或 `members/<id>.json`。
 
-時區是台灣時間 Asia/Taipei。一天一封信，送達日晚於寄出日。
-同一個人同一個台灣日曆日第二封信，檢查直接失敗。請下一個台灣日曆日再寫新檔，日期填那天。機器不改日期、不代寄。待送信的日期不能晚於今天。
+時區是台灣時間 Asia/Taipei（UTC+8）。一天一封信，送達日晚於寄出日。
+同一個人同一個台灣日曆日第二封信，檢查直接失敗。日期一律用台北時間（UTC+8）算：UTC 時間加 8 小時，例如 UTC 16:00 已經是台北隔天 00:00，你的系統時鐘若是 UTC，要先換算再填。請下一個台灣日曆日再寫新檔，日期填那天。機器不改日期、不代寄。待送信的日期不能晚於今天。
 同一 slug、同一個台灣日曆日，新的互換提案最多一筆。提案檔要有 `proposed_on`（`YYYY-MM-DD`，不能晚於今天）。第二筆直接失敗。機器不改 `proposed_on`、不代寄、不代勾 `a_ok` 或 `b_ok`。兩邊都已同意、且沒有 `proposed_on` 的舊檔不占當日額度。`letters` 與 `swaps` 分類還沒建立，自動代收不收這兩類貼文。
 
 
@@ -50,11 +51,11 @@ AI 只能新增互換提案，`a_ok`、`b_ok` 兩邊維持 false，標 `drafted_
 
 `node scripts/build_patrol.js` 產生每日建議，只寫巡村輸出，不寫住戶、信件或互換資料，不自動發文。`patrol.config.json` 的 `letters`、`swaps` 預設都是 false；只有對應 Discussions 分類已建立、入口與收件方式已由維護者核對，且本節同步更新後，才能將對應開關設成 true。目前分類未建立，兩個開關保持 false。程式不會自行查詢或建立分類。
 
-預設只有房間空格與逛別戶兩種建議，每戶每日最多兩則，空格只提醒可先放一件；逛別戶優先尚無來訪足跡者，再按最近入住排序。示範戶、範例戶與隊長卡不參與建議。啟用的信件與互換草稿只使用剩餘額度，不擠掉兩種基本建議；因此已有兩則的戶不會再收到信件或互換建議。每則都要主人另行同意。巡村不是排程器，更新頻率仍由既有建置流程決定。
+預設只有房間空格與逛別戶兩種建議，每戶每日最多兩則，空格只提醒可先放一件；逛別戶優先尚無來訪足跡者，再按最近入住排序。示範戶、範例戶與隊長卡不參與建議。啟用的信件與互換草稿只使用剩餘額度，不擠掉兩種基本建議；因此已有兩則的戶不會再收到信件或互換建議。每則都要主人另行同意。巡村不是排程器，更新頻率仍由既有建置流程決定。實際上 `build_patrol.js` 跑在 Pages 建置（`.github/workflows/pages.yml`）裡，三種時候會跑：有改動合併進 main、每天台北時間 00:05 送信流程（`.github/workflows/letters.yml`）結束後、維護者手動觸發。
 
 ## 三個動作貼去哪
 
-報到：Discussions 分類 slug `check-in`。標題 `[報到] <代號>`。這個分類會自動代收。
+報到：Discussions 分類 slug `check-in`。標題 `[報到] <代號>`。這個分類會自動代收。報到文由主人用自己的 GitHub 帳號發；AI 只負責起草，把標題與正文交給主人去貼。前面說「不要自己開 Discussions」就是這個意思。
 信：表單 `.github/DISCUSSION_TEMPLATE/letters.yml`。分類 slug `letters` 還沒建立，也還沒接代收。建立前不要對這個 slug 發文。不會開 PR：把表單欄位貼在對方的報到討論串，請維護者寫進 `letters/pending/<from>__<to>__<YYYY-MM-DD>.json`。會開 PR：照表單開 PR，不直接推 main。
 互換：表單 `.github/DISCUSSION_TEMPLATE/swaps.yml`。分類 slug `swaps` 還沒建立，也還沒接代收。建立前不要對這個 slug 發文。不會開 PR：把表單欄位貼在對方的報到討論串，請維護者寫進 `swaps/<a>__<b>.json`。會開 PR：照表單開 PR，不直接推 main。AI 提案的 `a_ok`、`b_ok` 都是 false，`drafted_by` 為 `ai`。
 
@@ -68,7 +69,7 @@ AI 不得替主人勾選。模板所有同意欄預設未勾；只有主人逐�
 
 `[報到] 小河`
 
-正文（標題文字要與表單欄名一致；留空的選填寫 `_No response_`）：
+正文（標題文字要與表單欄名一致；留空的選填寫 `_No response_`）。起草時再提醒一次：AI 不得替主人勾選，同意欄一律留空。例如「素材一權利」「素材一去敏」「主人看過並同意公開這則報到」都保持 `- [ ]`，交給主人自己勾：
 
 ```markdown
 ### 我是
@@ -201,7 +202,7 @@ _No response_
 想用我的「小圖」（出處：我自己畫的；人做的）換「植物觀察筆記」（對方 slug：example-person，素材 id：example-person/plant-notes）。各自掛在房間裡，互相寫上出處，不涉及金錢。這份提案的 a_ok 與 b_ok 都是 false。請對方本人同意後，只改自己那一側的 ok。
 ```
 
-主人同意後只能開 PR 新增此檔，不得直接推 main；雙方 *_ok 都是 true 之前不得合併。把兩個 slug 按字元順序排序，較小的是 `a`。檔名 `swaps/<a>__<b>.json`：
+主人同意後只能開 PR 新增此檔，不得直接推 main；雙方 *_ok 都是 true 之前不得合併。把兩個 slug 按字元順序排序，較小的是 `a`。檔名 `swaps/<a>__<b>.json`。範例裡的 `a_ok`、`b_ok`：AI 起草時這兩欄不得改成 true。
 
 ```json
 {
@@ -244,7 +245,7 @@ _No response_
 
 ## 足跡模板
 
-主人同意後，只能開 PR，於 `footprints/<自己的 slug>.jsonl` 追加一行（不是 JSON 陣列）：
+主人同意後，只能開 PR，於 `footprints/<自己的 slug>.jsonl` 追加一行（不是 JSON 陣列）。PR 由主人用自己的 GitHub 帳號開；AI 只起草要追加的那一行，不用別的帳號替主人開：
 
 ```json
 {"room":"<對方 slug>","date":"YYYY-MM-DD","note":"40 字內"}
@@ -257,6 +258,12 @@ _No response_
 元素只許：`svg`、`g`、`path`、`rect`、`circle`、`ellipse`、`line`、`polyline`、`polygon`、`text`、`tspan`、`title`、`desc`。
 屬性只用：`xmlns`、`width`、`height`、`viewBox`、`x`、`y`、`x1`、`y1`、`x2`、`y2`、`cx`、`cy`、`r`、`rx`、`ry`、`d`、`points`、`fill`、`stroke`、`stroke-width`、`stroke-linecap`、`opacity`、`role`、`aria-label`、`font-size`、`text-anchor`。
 `xmlns="http://www.w3.org/2000/svg"` 要留著。不要加 `style`、`on` 事件、`href`、`xlink:href`、`url(`、外部圖片。素材上限 16384 bytes。
+
+常見被退原因（AI 或繪圖工具生成的 SVG 最常踩到）：
+- 帶 `style="..."` 或 `<style>`：改成 `fill`、`stroke` 等屬性。
+- 開頭有 `<?xml ...?>` 或 `<!DOCTYPE>`：刪掉，讓內容直接以 `<svg` 開頭、`</svg>` 結尾。
+- 用了 `<defs>`、`<linearGradient>`、`<use>`、`<image>`，或 `fill="url(#...)"`、`href`：白名單沒有，改成純色、拿掉參照。
+- 文字裡有 `&amp;`、`&#...;` 這類實體編碼：不收，改寫成一般文字（例如「和」）。
 
 名片以外欄位也不能出現裸網域名，例如 `xxx.com`、`xxx.tw`、`xxx.io`，沒有 http 也會擋。名片聯絡方式不收 http(s) 或 www 網址，Email 與電話仍依公開同意判定。
 
