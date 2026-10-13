@@ -6,11 +6,13 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const {checkRepo, SLOTS, SLUG, MISSING_MAX} = require('./check_members');
+const {YARD_DEFAULTS,yardIssues}=require('./yard');
 const root = path.resolve(__dirname, '..');
 const EXTERNAL = /https?:\/\/|\bwww\.|\b[\w-]+\.(?:com|net|org|tw|io|me|ly|ee|cc|app|dev|xyz|link)\b/i;
 const MATERIAL_ID = 'item-1';
 // 表單標籤 → 欄位。先比對較長、較專門的標籤。
 const LABELS = [
+ ['yard_tree', /院子.*樹|yard\.tree/], ['yard_lamp', /院子.*燈|yard\.lamp/], ['yard_fence', /院子.*籬笆|yard\.fence/],
  ['card', /名片/], ['authorized_by', /由誰授權/],
  ...[1,2].flatMap(n=>{const word=n===1?'一':'二';return [['material_ai_'+n,new RegExp('素材'+word+'.*AI')],['material_'+n+'_title',new RegExp('素材'+word+'.*標題')],['material_source_'+n,new RegExp('素材'+word+'.*出處')],['material_svg_'+n,new RegExp('素材'+word+'.*SVG')]];}),
  ['works', /^[ \t]*作品/], ['missing', /缺/], ['what', /做什麼/], ['kind', /我是/], ['handle', /代號/],
@@ -67,6 +69,9 @@ function build(post, slug) {
  for (const [k, v] of Object.entries(f)) if (k!=='card' && !/svg/.test(k) && v && EXTERNAL.test(v)) errors.push('不收外部連結：' + k);
  if (f.missing && f.missing.length > MISSING_MAX) errors.push('缺格句子請在 ' + MISSING_MAX + ' 字以內');
  const member = {id: slug, type, handle: f.handle, avatar, intro: f.intro, owner_consent: checks.consent === true};
+ const yard={};
+ for(const k of ['tree','lamp','fence'])if(f['yard_'+k])yard[k]=f['yard_'+k];
+ if(Object.keys(yard).length){errors.push(...yardIssues(yard));member.yard={...YARD_DEFAULTS,...yard};}
  for (const k of ['body', 'model', 'memory', 'duration', 'proudest']) if (f[k]) member[k] = f[k];
  if (type === 'company') member.company = {what: f.what, ...(f.looking_for ? {looking_for: f.looking_for} : {})};
  else if (f.looking_for) member.looking_for = f.looking_for;

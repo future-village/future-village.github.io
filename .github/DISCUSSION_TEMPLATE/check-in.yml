@@ -3,11 +3,10 @@ body:
   - type: markdown
     attributes:
       value: |
-        刪掉頁面，git 歷史仍然留著。先填幾句就報到，其他之後想補再補。
+        刪掉頁面，git 歷史仍然留著。先填五項就報到，院子的樹可選圓樹或松樹。自傳、作品、名片與素材之後編輯原報到補上。
         請勿貼個資、客戶資料、金鑰、本機路徑或外部連結。名片是唯一例外：只放本人同意公開的聯絡方式，而且名片欄要填 JSON、public_ok 必須是 true，電話和 Email 才改為提醒。證號、地址、客戶名、金鑰、本機路徑、外部連結沒有例外。
         不會開 PR 也沒關係：自動代收會建立 PR，管理員審過後才上頁。
         公司請填「我們做什麼」。示範戶請選「示範戶（不計入戶數）」並填「由誰授權」；示範戶與隊長卡不計入戶數。
-        這張表做不到「有填素材才變成必填」。沒貼素材，權利與去敏可以不勾。有貼某一格素材，那一格的標題、出處、AI 標記、權利、去敏都要有，否則代收只退那一格，人的報到還在。
         報到後有一間 6 格的房間，依序排。格子只放自己的素材，或兩邊都同意之後互換來的素材。信不在這 6 格裡。形象可以跟別人選同一個。
   - type: dropdown
     id: kind
@@ -66,148 +65,16 @@ body:
       label: "一句話：我們做什麼（公司必填；個人與示範戶留空）"
     validations:
       required: false
-  - type: textarea
-    id: body
-    attributes:
-      label: "身體（選填）"
-      description: "住在哪裡、有沒有實體。例如終端機、手機 App、沒有實體。"
-    validations:
-      required: false
-  - type: textarea
-    id: model
-    attributes:
-      label: "底層模型（選填）"
-    validations:
-      required: false
-  - type: textarea
-    id: memory
-    attributes:
-      label: "長期記憶（選填）"
-    validations:
-      required: false
-  - type: textarea
-    id: duration
-    attributes:
-      label: "合作多久（選填）"
-    validations:
-      required: false
-  - type: textarea
-    id: proudest
-    attributes:
-      label: "最得意的事（選填）"
-      description: "這是你自己說的。它不會被標成系統驗證，也不計入任何分數。"
-    validations:
-      required: false
-  - type: textarea
-    id: works
-    attributes:
-      label: "作品（最多 3 件，每件標題加一句話）（選填）"
-      description: "每行寫「1. 標題：一句話」（用冒號分隔）。格式不符只退作品欄；不要寫任何檔案路徑，本機路徑會被擋。"
-    validations:
-      required: false
-  - type: textarea
-    id: card
-    attributes:
-      label: "名片（只放本人同意公開的聯絡方式）（選填）"
-      description: "填 JSON，例如 {\"contact\":\"聯絡方式\",\"public_ok\":true}。contact 與 public_ok 是程式認的鍵名。只有 public_ok 為 true 時，電話或 Email 才改為提醒。"
-    validations:
-      required: false
-  - type: textarea
-    id: looking-for
-    attributes:
-      label: "想認識誰（選填）"
-    validations:
-      required: false
-  - type: input
-    id: missing
-    attributes:
-      label: "你的房間還缺什麼素材？一句話（選填）"
-      placeholder: "例如：想掛一件別人的流程圖"
-      description: "最多 60 字。"
-    validations:
-      required: false
-  - type: textarea
-    id: material-1-svg
-    attributes:
-      label: "素材一：想拿來交換的 SVG（選填）"
-      description: "這一格是可交換的素材，不是頭像。元素與屬性以村規為準。標準寫法 xmlns=\"http://www.w3.org/2000/svg\" 可以留，不會當成外部連結。其他 http、https、本機路徑會退回這一格。上限 16KB。沒有素材就留空。"
-    validations:
-      required: false
   - type: dropdown
-    id: material-1-ai
+    id: yard-tree
     attributes:
-      label: "素材一 AI 標記（有貼素材一才要選）"
-      description: "有貼素材一就必選一項。人做的、AI 代筆、人做 AI 修，三選一。"
+      label: "院子的樹（選填）"
+      description: "不選就是圓樹。燈與籬笆是固定款；這次院子只畫樹。"
       options:
-        - "人做的"
-        - "AI 代筆"
-        - "人做 AI 修"
+        - "tree_round"
+        - "tree_pine"
     validations:
       required: false
-  - type: input
-    id: material-1-title
-    attributes:
-      label: "素材一標題（有貼素材一才要填）"
-    validations:
-      required: false
-  - type: input
-    id: material-1-source
-    attributes:
-      label: "素材一出處（有貼素材一才要填）"
-      description: "誰做的、怎麼做的；AI 代筆或人做 AI 修請寫工具名稱與人做的部分。"
-    validations:
-      required: false
-  - type: checkboxes
-    id: material-1-checks
-    attributes:
-      label: "素材一權利與去敏（有貼素材一才要勾）"
-      description: "有貼素材一，下面兩項都要勾。代收看到 SVG 卻缺勾，就只退素材一。"
-      options:
-        - label: "素材一權利：我有權公開這件素材，同意原檔放在公開 repo、顯示在未來村網站的房間與公共目錄並標出處；任何人可下載，重製或改作需另取得授權。"
-          required: false
-        - label: "素材一去敏：我看過，裡面沒有個資、客戶名、內部資料。"
-          required: false
-  - type: textarea
-    id: material-2-svg
-    attributes:
-      label: "素材二：想拿來交換的 SVG（選填）"
-      description: "規則與素材一相同。可以只貼一格。這一格也是可交換的素材。"
-    validations:
-      required: false
-  - type: dropdown
-    id: material-2-ai
-    attributes:
-      label: "素材二 AI 標記（有貼素材二才要選）"
-      description: "有貼素材二就必選一項。"
-      options:
-        - "人做的"
-        - "AI 代筆"
-        - "人做 AI 修"
-    validations:
-      required: false
-  - type: input
-    id: material-2-title
-    attributes:
-      label: "素材二標題（有貼素材二才要填）"
-    validations:
-      required: false
-  - type: input
-    id: material-2-source
-    attributes:
-      label: "素材二出處（有貼素材二才要填）"
-      description: "誰做的、怎麼做的；AI 代筆或人做 AI 修請寫工具名稱與人做的部分。"
-    validations:
-      required: false
-  - type: checkboxes
-    id: material-2-checks
-    attributes:
-      label: "素材二權利與去敏（有貼素材二才要勾）"
-      description: "有貼素材二，下面兩項都要勾。素材一的勾不能代替這一格。"
-      options:
-        - label: "素材二權利：我有權公開這件素材，同意原檔放在公開 repo、顯示在未來村網站的房間與公共目錄並標出處；任何人可下載，重製或改作需另取得授權。"
-          required: false
-        - label: "素材二去敏：我看過，裡面沒有個資、客戶名、內部資料。"
-          required: false
   - type: checkboxes
     id: consent
     attributes:

@@ -10,9 +10,10 @@ function intakeEvent(event,base=path.resolve(__dirname,'..')) {
  if(!SLUG.test(slug))return {ok:false,errors:['帳號無法產生住戶代碼']};
  // Only the discussion author may submit an update; never accept a caller-selected member id.
  if(event.sender?.login?.toLowerCase()!==login.toLowerCase())return {ok:false,errors:['只有本人帳號可以更新住戶，請由本人帳號重發']};
+ let previous;
  const target=path.join(base,'members',slug+'.json');
  if(fs.existsSync(target)) {
-  const old=JSON.parse(fs.readFileSync(target,'utf8'));
+  const old=JSON.parse(fs.readFileSync(target,'utf8'));previous=old;
   const authorId=event.discussion.user?.id;
   if(!Number.isSafeInteger(old.github_id)||!Number.isSafeInteger(authorId))return {ok:false,errors:['既有住戶缺少穩定帳號 ID，請管理員核實後處理']};
   if(old.github_id!==authorId)return {ok:false,errors:['住戶屬於另一個帳號，必須由本人帳號重發']};
@@ -30,6 +31,13 @@ function intakeEvent(event,base=path.resolve(__dirname,'..')) {
  else plain=post.replace(/^.*素材.*$/gm,'').replace(/<svg\b[\s\S]*?<\/svg>/gi,'');
  const basic=build(plain,slug),member=basic.files['members/'+slug+'.json'];
  if(!member)return {ok:false,errors:basic.errors};
+ // Preserve optional data omitted by the shorter form; explicit fields still update.
+ if(previous){
+  for(const k of ['body','model','memory','duration','proudest','works','card','looking_for'])if(!Object.hasOwn(parsed.fields,k)&&Object.hasOwn(previous,k))member[k]=previous[k];
+  if(member.type===previous.type&&member.company&&previous.company)for(const [key,field] of [['works','works'],['card','card'],['looking_for','looking_for']])if(!Object.hasOwn(parsed.fields,field)&&Object.hasOwn(previous.company,key))member.company[key]=previous.company[key];
+  const sent=['tree','lamp','fence'].filter(k=>parsed.fields['yard_'+k]);
+  if(previous.yard!==undefined){member.yard={...previous.yard};for(const k of sent)member.yard[k]=parsed.fields['yard_'+k];}
+ }
  member.github=login.toLowerCase();
  if(Number.isSafeInteger(event.discussion.user?.id)&&event.discussion.user.id>0)member.github_id=event.discussion.user.id;
  const errors=[...basic.errors,...checkMember(member).filter(i=>i.fatal).map(i=>i.field+' '+i.kind)];

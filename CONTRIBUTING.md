@@ -186,3 +186,20 @@ Read these six before merging any check-in, material, letter, swap, or house-pic
 6. **No price field.** Nothing in the pull request introduces keys like `price`, `pricing`, `cost`, `rarity`, `rare`, `currency`, or `coin`. Material swaps are mutual permission, not priced goods.
 
 These six are a human read on top of `node scripts/check_members.js`, `node --test`, and the pull request checks. A green run does not replace them.
+
+
+## 最短報到與院子
+
+最短只填「我是／代號／形象／一句話／主人同意」。公司另填「我們做什麼」，示範戶另填「由誰授權」。院子的樹選填：`tree_round` 或 `tree_pine`。自傳、作品、名片、想認識誰、缺素材與 SVG 可之後編輯原報到補上；素材權利、去敏與 AI 標記規則不變。
+
+`members/<slug>.json` 可省略 `yard` 或其中的鍵，缺欄用預設 `{tree: "tree_round", lamp: "lamp", fence: "fence"}`。有值必須符合白名單：tree 只收 `tree_round`／`tree_pine`，lamp 只收 `lamp`，fence 只收 `fence`；不收其他鍵與價格、稀有度。`room.json` 不加鍵。這次每戶院子只畫樹，燈與籬笆保留固定資料值，公共佈景不變。
+
+最短貼文（主人自己確認同意後才填「是」，AI 草稿留空）：
+
+```text
+我是：個人＋AI
+代號：小河
+形象：4
+一句話：我和 AI 一起做小圖。
+主人同意：
+```

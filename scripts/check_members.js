@@ -1,6 +1,7 @@
 'use strict';
 const fs = require('node:fs');
 const path = require('node:path');
+const {yardIssues}=require('./yard');
 const root = path.resolve(__dirname, '..');
 const patterns = [
  ['台灣手機', /(?:\+886[- ]?9\d{2}|09\d{2})[- ]?\d{3}[- ]?\d{3}/, true],
@@ -119,6 +120,7 @@ function checkPublicProps(base,issues){
 function checkMember(m, file = 'member') {
  const issues = [];
  const add = (field, kind, fatal = true, advice = '請移除或改用去敏描述') => issues.push({file, field, kind, fatal, advice});
+ for(const kind of yardIssues(m.yard))add('yard',kind);
  const text = v => typeof v === 'string' && v.trim().length > 0;
  for (const key of ['handle','intro']) if (!text(m[key])) add(key,'缺少必填');
  if (typeof m.handle==='string' && (![...m.handle.trim()].length || [...m.handle.trim()].length>40)) add('handle','須為 1～40 個字元');
