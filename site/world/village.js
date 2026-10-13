@@ -93,8 +93,8 @@ function defaultShadowMaterial(){
   const material=new T.MeshBasicMaterial({map:contactShadowTexture(),transparent:true,depthWrite:false,fog:true});
   material.polygonOffset=true;material.polygonOffsetFactor=-2;material.polygonOffsetUnits=-2;return material;
 }
-export function buildPropCards(scene,shadowMaterial){
-  const layout=propLayout(),meshes={},dummy=new T.Object3D();
+export function buildPropCards(scene,shadowMaterial,layout=propLayout()){
+  const meshes={},dummy=new T.Object3D();
   function place(mesh,i,x,z,yaw,w,h){dummy.position.set(x,GROUND_TOP_Y+h/2,z);dummy.rotation.set(0,yaw,0);dummy.scale.set(w,h,1);dummy.updateMatrix();mesh.setMatrixAt(i,dummy.matrix);}
   for(const kind of Object.keys(PROP_SPEC)){
     const spec=PROP_SPEC[kind],items=layout[kind],mesh=new T.InstancedMesh(new T.PlaneGeometry(1,1),propMaterial(PROP_FILE[kind],spec.doubleSide),items.length);
@@ -120,6 +120,21 @@ export function buildPropCards(scene,shadowMaterial){
   }
   const counts={};for(const kind of Object.keys(PROP_SPEC))counts[kind]=layout[kind].length;
   return {layout,counts,meshes,shadows:shadowMesh,update};
+}
+
+export function yardLayout(households){
+  const layout=Object.fromEntries(Object.keys(PROP_SPEC).map(k=>[k,[]]));
+  for(const h of households.slice(0,512)){
+    const tree=h.yard?.tree??'tree_round';
+    if(!['tree_round','tree_pine'].includes(tree))throw new Error('Invalid yard tree');
+    const p=h.position;layout[tree].push({x:p.x+(p.x<0?-10:10),z:p.z-3});
+  }
+  return layout;
+}
+export function buildYardCards(scene,households,shadowMaterial){return buildPropCards(scene,shadowMaterial,yardLayout(households));}
+export function removeYardCards(scene,cards){
+  if(!cards)return;
+  for(const mesh of [...Object.values(cards.meshes),cards.shadows]){scene.remove(mesh);mesh.geometry.dispose();mesh.material.map?.dispose();mesh.material.dispose();}
 }
 
 const PROP_GLB=[
@@ -291,6 +306,7 @@ function start(){
   shadowMat.polygonOffset=true;shadowMat.polygonOffsetFactor=-2;shadowMat.polygonOffsetUnits=-2;
   const contactShadows=new T.InstancedMesh(shadowGeo,shadowMat,512);contactShadows.count=0;contactShadows.frustumCulled=false;contactShadows.castShadow=false;contactShadows.receiveShadow=false;contactShadows.renderOrder=1;scene.add(contactShadows);
   const propCards=buildPropCards(scene,shadowMat);
+  let yardCards;
   const propSwap={pending:true,swapped:[],failed:[]};
   window.__propSwap=propSwap;
   swapVillageProps(scene,propCards,!low,propSwap).catch(err=>{propSwap.failed.push({kind:'loader',file:'',message:errText(err)});propSwap.pending=false;});
@@ -316,6 +332,7 @@ function start(){
   const growing=new Map();
   function sync(raw){
     world=model(raw);homes.clear();for(const h of world.households)homes.set(h.id,h.position);const count=Math.min(512,world.households.length);
+    removeYardCards(scene,yardCards);yardCards=buildYardCards(scene,world.households.slice(0,count));
     assignContactShadows(contactShadows,count);pads.count=contactShadows.count;
     for(let i=0;i<512;i++)houseMeshes[i].visible=i<count;
     for(const index of growing.keys())if(index>=count)growing.delete(index);
@@ -340,7 +357,7 @@ function start(){
     if(dt>25&&dt<500)slow+=dt;else slow=0;if(slow>2000){if(!degraded){renderer.setPixelRatio(1);renderer.shadowMap.enabled=false;window.worldMetrics.shadows=false;degraded=true;window.worldMetrics.degraded=true;window.worldMetrics.pixelRatio=1;slow=0;}else{location.replace(paths.street);return;}}
     if(now-lastInput>45000&&now-lastTour>6500){const stops=[{x:0,z:0},...zones.map(z=>({x:z[1],z:z[2]})),...(world?.households.slice(0,3).map(h=>h.position)||[])];target.set(stops[tour%stops.length].x,0,stops[tour++%stops.length].z);distance=tour%5===0?230:110;lastTour=now;}
     pitch=clampPitch(pitch);const posed=cameraPose(target.x,target.y,target.z,distance,pitch,yaw);camera.position.set(posed.position.x,posed.position.y,posed.position.z);camera.lookAt(target);
-    propCards.update(camera);
+    propCards.update(camera);yardCards?.update(camera);
     for(let i=0;i<houseMeshes.length;i++){
       const art=houseMeshes[i];if(!art.visible)continue;let height=HOUSE_H;
       if(growing.has(i)){const scale=Math.min(1,(now-growing.get(i))/1000);height=HOUSE_H*Math.max(.01,scale);if(scale===1)growing.delete(i);}

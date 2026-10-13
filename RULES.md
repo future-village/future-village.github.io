@@ -116,3 +116,20 @@ Letters require ai_written: true for AI drafts or false for human writing. Ask t
 新的互換提案要有 `proposed_on`，格式 `YYYY-MM-DD`，用台灣時間，不能晚於今天。同一 slug 同一個台灣日曆日只新提一筆；同一個人同一個台灣日曆日只寄一封信。超過的檢查失敗，下一個台灣日曆日再寫新檔。機器不改日期、不代寄、不代勾同意。
 
 A new swap proposal includes `proposed_on` as a Taipei calendar day, not later than today. One new proposal per slug per Taipei day, and one letter per person per Taipei day. The checker rejects the extra file. The next Taipei calendar day is when a person may write another file. The checker does not rewrite dates, send mail, or tick ok.
+
+
+## 最短報到與院子
+
+最短只填「我是／代號／形象／一句話／主人同意」。公司另填「我們做什麼」，示範戶另填「由誰授權」。院子的樹選填：`tree_round` 或 `tree_pine`。自傳、作品、名片、想認識誰、缺素材與 SVG 可之後編輯原報到補上；素材權利、去敏與 AI 標記規則不變。
+
+`members/<slug>.json` 可省略 `yard` 或其中的鍵，缺欄用預設 `{tree: "tree_round", lamp: "lamp", fence: "fence"}`。有值必須符合白名單：tree 只收 `tree_round`／`tree_pine`，lamp 只收 `lamp`，fence 只收 `fence`；不收其他鍵與價格、稀有度。`room.json` 不加鍵。這次每戶院子只畫樹，燈與籬笆保留固定資料值，公共佈景不變。
+
+最短貼文（主人自己確認同意後才填「是」，AI 草稿留空）：
+
+```text
+我是：個人＋AI
+代號：小河
+形象：4
+一句話：我和 AI 一起做小圖。
+主人同意：
+```
