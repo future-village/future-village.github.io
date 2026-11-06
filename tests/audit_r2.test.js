@@ -48,6 +48,8 @@ test('malformed hashes decode to empty without stopping later render setup',()=>
 test('sweep processing is bounded and queued receipts expire and ignore spoofers',async()=>{
  const d={author:{login:'resident',databaseId:101},body,category:{slug:'check-in'},id:'d',number:1},mark='<!-- future-village-intake:'+signature(d)+' -->';
  assert.equal(receiptMatches({author:{login:'github-actions[bot]'},body:mark},d,mark),true);
+ // GraphQL reports the Actions bot as login github-actions with __typename Bot.
+ assert.equal(receiptMatches({author:{login:'github-actions',__typename:'Bot'},body:mark},d,mark),true);assert.equal(receiptMatches({author:{login:'github-actions',__typename:'User'},body:mark},d,mark),false);
  const queue='<!-- future-village-queue:'+signature(d)+':2000 -->';assert.equal(receiptMatches({author:{login:'github-actions[bot]'},body:queue},d,mark,1000),true);assert.equal(receiptMatches({author:{login:'github-actions[bot]'},body:queue},d,mark,2000),false);assert.equal(receiptMatches({author:{login:'resident'},body:mark},d,mark),false);
  let calls=0;const results=await sweep(()=>({nodes:Array.from({length:30},(_,i)=>({...d,number:i})),pageInfo:{hasNextPage:false}}),()=>false,()=>{calls++;return {ok:true}});assert.equal(calls,25);assert.equal(results.length,25);
 });
