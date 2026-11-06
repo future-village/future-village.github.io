@@ -72,12 +72,13 @@ async function main(){
  const [owner,name]=process.env.GITHUB_REPOSITORY.split('/');
  const prs=JSON.parse(gh(['pr','list','--base','main','--state','open','--limit','1000','--json','headRefName']));
  const list=cursor=>graphql('query($owner:String!,$name:String!,$cursor:String){repository(owner:$owner,name:$name){discussions(first:100,after:$cursor){nodes{id number body author{login ... on User{databaseId}} editor{login} lastEditedAt category{slug}} pageInfo{hasNextPage endCursor}}}}',{owner,name,...(cursor?{cursor}:{})}).repository.discussions;
- const receipt=(d,mark)=>{let cursor=null;do{const page=graphql('query($id:ID!,$cursor:String){node(id:$id){... on Discussion{comments(first:100,after:$cursor){nodes{body author{login}} pageInfo{hasNextPage endCursor}}}}}',{id:d.id,...(cursor?{cursor}:{})}).node.comments;if(page.nodes.some(c=>receiptMatches(c,d,mark)))return true;cursor=page.pageInfo.hasNextPage?page.pageInfo.endCursor:null;}while(cursor);return false;};
+ const receipt=(d,mark)=>{let cursor=null;do{const page=graphql('query($id:ID!,$cursor:String){node(id:$id){... on Discussion{comments(first:100,after:$cursor){nodes{body author{login __typename}} pageInfo{hasNextPage endCursor}}}}}',{id:d.id,...(cursor?{cursor}:{})}).node.comments;if(page.nodes.some(c=>receiptMatches(c,d,mark)))return true;cursor=page.pageInfo.hasNextPage?page.pageInfo.endCursor:null;}while(cursor);return false;};
  const results=await sweep(list,receipt,(d,mark)=>receive(d,mark,prs));console.log(JSON.stringify(results));if(results.some(r=>r.error))process.exitCode=1;
 }
 if(require.main===module)main().catch(e=>{console.error(e.message);process.exitCode=1;});
 function receiptMatches(c,d,mark,now=Date.now()){
- if(c.author?.login!=='github-actions[bot]')return false;
+ // GraphQL reports this bot as github-actions (Bot); REST and older fixtures use github-actions[bot].
+ if(c.author?.login!=='github-actions[bot]'&&!(c.author?.login==='github-actions'&&c.author?.__typename==='Bot'))return false;
  if(c.body.includes(mark))return true;
  return [...c.body.matchAll(/<!-- future-village-queue:([a-f0-9]{64}):(\d+) -->/g)].some(([,sig,expiry])=>sig===signature(d)&&Number(expiry)>now);
 }
